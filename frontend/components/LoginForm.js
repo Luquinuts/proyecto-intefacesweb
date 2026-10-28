@@ -53,6 +53,7 @@ export default {
                 });
                 const sessionResult = await sessionResponse.json();
                 if (sessionResult.correcto === true) {
+                    window.location.hash = 'consultations';
                     this.$emit('authenticated', sessionResult.rol);
                 } else {
                     this.message = 'No fue posible crear la sesión.';

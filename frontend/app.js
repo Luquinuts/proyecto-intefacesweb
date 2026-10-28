@@ -7,7 +7,7 @@ const { ref } = Vue;
 createApp({
     components: { LoginView, ConsultationsView },
     setup() {
-        const authenticated = ref(false);
+        const authenticated = ref(window.location.hash === '#consultations');
         const role = ref('user');
         const showConsultations = (loginRole) => {
             role.value = loginRole || 'user';

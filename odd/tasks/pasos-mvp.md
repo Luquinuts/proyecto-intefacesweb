@@ -9,6 +9,7 @@ Implement the smallest complete group-project MVP for PASOS: Firebase v10 email/
 - The submission is a group project, so Front and Backend are both in scope.
 - Firebase Authentication remains the authentication method.
 - The Firebase flow must match the first partial: PHP captcha validation, `signInWithEmailAndPassword`, ID-token retrieval, JSON POST to `crear_sesion.php`, confirmed PHP session, and redirect.
+- The confirmed PHP session navigates to the consultations panel through the `#consultations` hash route, which also restores the authenticated view after reload.
 - MVP roles are user and administrator/professional.
 - MVP functions are login, consultation creation, consultation listing, consultation detail, and administrator status updates.
 - MVP tables are `users` and `consultations`; categories are deferred.
