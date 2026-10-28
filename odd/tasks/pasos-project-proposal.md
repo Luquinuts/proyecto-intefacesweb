@@ -46,4 +46,5 @@ The project needs a clear, reviewable plan before implementation. The proposal m
 - T3 completed by checking required terms, Markdown structure, whitespace, and the assignment-to-evidence mapping.
 - Work-unit commit: `c4bc89a` (`develop: docs(pasos): define academic project scope`).
 - Verification: `git diff --check` passed; required technology and assignment terms were found; RDD assessment classified the committed documentation as `passive` and `review_due: false`.
-- Next step: confirm the unresolved scope decisions with the teacher before implementing application code.
+- Scope update: group submission and Firebase Authentication method confirmed by the user.
+- Next step: confirm the remaining Firebase provider, local password, captcha, API, and privacy decisions before implementing application code.

@@ -20,6 +20,8 @@ The practical assignment requires a front end using Vue.js, HTML5, CSS, Bootstra
 
 ### Proposed project decisions
 
+- This is a group submission, so the complete Front and Backend version is in scope and the Front must connect to the Backend through REST.
+- Firebase Authentication remains the selected authentication method.
 - One user can submit a short consultation request without classifying it by legal branch.
 - A simple status flow is sufficient: `received`, `under_review`, `scheduled`, and `closed`.
 - The academic demo will use a small set of seeded or manually created records rather than a complete scheduling or payment platform.
@@ -27,8 +29,7 @@ The practical assignment requires a front end using Vue.js, HTML5, CSS, Bootstra
 
 ### Needs confirmation
 
-- Whether this is a one-person or two-person submission. The assignment requests the complete Front and Backend version for two people and asks a one-person project to confirm its scope with the teacher.
-- Which Firebase sign-in option is expected: social providers, email/password form, or both.
+- Which Firebase sign-in option is expected: social providers, email/password form, or both. Firebase Authentication itself is confirmed as the method.
 - Whether the teacher expects a local PHP password flow in addition to Firebase Authentication. Firebase normally manages authentication credentials; the assignment separately mentions password hashing, so this boundary must be confirmed before storing any local credential.
 - Whether a real captcha provider, a local development substitute, or a teacher-approved demonstration is required.
 - Whether the consultation evidence may contain real personal or sensitive legal information. The demo should use invented data unless permission and privacy rules are confirmed.

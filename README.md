@@ -20,7 +20,7 @@ The repository will contain the course project proposal and, after scope confirm
 
 ## Review and verification path
 
-1. Confirm the one-person or two-person project scope with the teacher.
+1. Implement the complete Front and Backend scope required for a group submission.
 2. Review [`docs/propuesta.md`](docs/propuesta.md) against `docs/Practico Final Interfaces y Prog Web.pdf`.
 3. Implement only the confirmed front-end views, PHP pages, related MySQL tables, authentication boundary, and REST endpoints.
 4. Demonstrate the forms, authentication, database queries, REST responses, validation, captcha boundary, and final user flow in a video or PDF, together with the zipped Front, Backend, and `.sql` deliverables required by the assignment.
