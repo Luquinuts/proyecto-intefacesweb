@@ -12,6 +12,15 @@ export default {
     beforeUnmount() { $(this.$el).off('input', '#consultation-filter'); },
     methods: {
         selectConsultation(consultation) { this.$emit('select', consultation); },
+        getStatusLabel(status) {
+            const labels = {
+                received: 'Recibida',
+                under_review: 'En revisión',
+                scheduled: 'Agendada',
+                closed: 'Cerrada',
+            };
+            return labels[status] || status;
+        },
     },
     template: `
         <section class="card shadow-sm p-3">
@@ -24,7 +33,9 @@ export default {
                     <thead><tr><th>Descripción</th><th>Estado</th><th>Fecha</th></tr></thead>
                     <tbody>
                         <tr v-for="consultation in consultations" :key="consultation.id" @click="selectConsultation(consultation)">
-                            <td>{{ consultation.description }}</td><td>{{ consultation.status }}</td><td>{{ consultation.requested_at }}</td>
+                            <td>{{ consultation.description }}</td>
+                            <td>{{ getStatusLabel(consultation.status) }}</td>
+                            <td>{{ consultation.requested_at }}</td>
                         </tr>
                         <tr v-if="!consultations.length"><td colspan="3">Aún no hay consultas.</td></tr>
                     </tbody>

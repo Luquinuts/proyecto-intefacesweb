@@ -108,6 +108,15 @@ export default {
                 this.selected = this.consultations.find((consultation) => consultation.id === this.selected.id) || null;
             }
         },
+        getStatusLabel(status) {
+            const labels = {
+                received: 'Recibida',
+                under_review: 'En revisión',
+                scheduled: 'Agendada',
+                closed: 'Cerrada',
+            };
+            return labels[status] || status;
+        },
     },
     template: `
         <section class="pasos-card">
@@ -130,7 +139,7 @@ export default {
             <consultation-table :consultations="consultations" @select="selectConsultation"></consultation-table>
             <article v-if="selected" class="alert alert-secondary mt-3">
                 <strong>Consulta seleccionada:</strong> {{ selected.description }}<br>
-                <span>Estado: {{ selected.status }}</span>
+                <span>Estado: {{ getStatusLabel(selected.status) }}</span>
                 <form v-if="role === 'administrator' || role === 'professional'" id="consultation-update-form" class="mt-3" @submit="updateConsultation">
                     <label class="form-label" for="consultation-status">Estado</label>
                     <select id="consultation-status" v-model="updateStatus" class="form-select mb-2">
