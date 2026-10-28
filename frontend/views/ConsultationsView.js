@@ -42,9 +42,9 @@ export default {
             const result = await response.json();
             if (result.correcto) {
                 this.description = '';
-                this.message = 'Consultation sent.';
+                this.message = 'Consulta enviada.';
                 this.loadConsultations();
-            } else this.message = result.mensaje || 'Could not send consultation.';
+            } else this.message = result.mensaje || 'No se pudo enviar la consulta.';
         },
         async updateConsultation(event) {
             event.preventDefault();
@@ -54,7 +54,7 @@ export default {
                 body: JSON.stringify({ status: this.updateStatus, professional_note: this.professionalNote }),
             });
             const result = await response.json();
-            this.message = result.correcto ? 'Consultation updated.' : (result.mensaje || 'Could not update consultation.');
+            this.message = result.correcto ? 'Consulta actualizada.' : (result.mensaje || 'No se pudo actualizar la consulta.');
             if (result.correcto) {
                 await this.loadConsultations();
                 this.selected = this.consultations.find((consultation) => consultation.id === this.selected.id) || null;
@@ -63,29 +63,29 @@ export default {
     },
     template: `
         <section class="pasos-card">
-            <header class="mb-4"><p class="brand fw-bold">PASOS</p><h1 class="h3">Your next reasonable step starts with understanding.</h1></header>
+            <header class="mb-4"><p class="brand fw-bold">PASOS</p><h1 class="h3">Tu siguiente paso razonable empieza por entender.</h1></header>
             <form id="consultation-form" class="card shadow-sm p-3 mb-4">
-                <label class="form-label" for="description">What happened?</label>
+                <label class="form-label" for="description">¿Qué ocurrió?</label>
                 <textarea id="description" v-model.trim="description" class="form-control mb-3" rows="4" maxlength="3000" required></textarea>
-                <label class="form-label" for="contact-preference">Preferred contact</label>
+                <label class="form-label" for="contact-preference">Preferencia de contacto</label>
                 <select id="contact-preference" v-model="contactPreference" class="form-select mb-3">
-                    <option value="email">Email</option><option value="phone">Phone</option><option value="video">Video call</option>
+                    <option value="email">Correo electrónico</option><option value="phone">Teléfono</option><option value="video">Videollamada</option>
                 </select>
-                <button class="btn btn-primary">Send consultation</button>
+                <button class="btn btn-primary">Enviar consulta</button>
                 <p v-if="message" class="alert alert-info mt-3 mb-0">{{ message }}</p>
             </form>
             <consultation-table :consultations="consultations" @select="selectConsultation"></consultation-table>
             <article v-if="selected" class="alert alert-secondary mt-3">
-                <strong>Selected consultation:</strong> {{ selected.description }}<br>
-                <span>Status: {{ selected.status }}</span>
+                <strong>Consulta seleccionada:</strong> {{ selected.description }}<br>
+                <span>Estado: {{ selected.status }}</span>
                 <form v-if="role === 'administrator' || role === 'professional'" id="consultation-update-form" class="mt-3" @submit="updateConsultation">
-                    <label class="form-label" for="consultation-status">Status</label>
+                    <label class="form-label" for="consultation-status">Estado</label>
                     <select id="consultation-status" v-model="updateStatus" class="form-select mb-2">
-                        <option value="received">Received</option><option value="under_review">Under review</option><option value="scheduled">Scheduled</option><option value="closed">Closed</option>
+                        <option value="received">Recibida</option><option value="under_review">En revisión</option><option value="scheduled">Agendada</option><option value="closed">Cerrada</option>
                     </select>
-                    <label class="form-label" for="professional-note">Professional note</label>
+                    <label class="form-label" for="professional-note">Nota del profesional</label>
                     <textarea id="professional-note" v-model.trim="professionalNote" class="form-control mb-2" rows="3" maxlength="3000"></textarea>
-                    <button class="btn btn-secondary">Update consultation</button>
+                    <button class="btn btn-secondary">Actualizar consulta</button>
                 </form>
             </article>
         </section>
