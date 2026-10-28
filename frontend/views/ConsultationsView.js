@@ -61,9 +61,63 @@ export default {
             }
         },
     },
+    methods: {
+        logout() {
+            fetch('../backend/cerrar_sesion.php', { method: 'POST' })
+                .finally(() => {
+                    window.location.hash = '';
+                    window.location.reload();
+                });
+        },
+        async loadConsultations() {
+            const response = await fetch('../backend/api/consultations.php');
+            const result = await response.json();
+            if (result.correcto) this.consultations = result.consultations;
+        },
+        selectConsultation(consultation) {
+            this.selected = consultation;
+            this.updateStatus = consultation.status;
+            this.professionalNote = consultation.professional_note || '';
+        },
+        async submitConsultation(event) {
+            event.preventDefault();
+            this.message = '';
+            const response = await fetch('../backend/api/consultations.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description: this.description, contact_preference: this.contactPreference }),
+            });
+            const result = await response.json();
+            if (result.correcto) {
+                this.description = '';
+                this.message = 'Consulta enviada.';
+                this.loadConsultations();
+            } else this.message = result.mensaje || 'No se pudo enviar la consulta.';
+        },
+        async updateConsultation(event) {
+            event.preventDefault();
+            const response = await fetch(`../backend/api/consultations.php/${this.selected.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: this.updateStatus, professional_note: this.professionalNote }),
+            });
+            const result = await response.json();
+            this.message = result.correcto ? 'Consulta actualizada.' : (result.mensaje || 'No se pudo actualizar la consulta.');
+            if (result.correcto) {
+                await this.loadConsultations();
+                this.selected = this.consultations.find((consultation) => consultation.id === this.selected.id) || null;
+            }
+        },
+    },
     template: `
         <section class="pasos-card">
-            <header class="mb-4"><p class="brand fw-bold">PASOS</p><h1 class="h3">Tu siguiente paso razonable empieza por entender.</h1></header>
+            <header class="mb-4 d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="brand fw-bold">PASOS</p>
+                    <h1 class="h3">Tu siguiente paso razonable empieza por entender.</h1>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm" @click="logout">Cerrar sesión</button>
+            </header>
             <form id="consultation-form" class="card shadow-sm p-3 mb-4">
                 <label class="form-label" for="description">¿Qué ocurrió?</label>
                 <textarea id="description" v-model.trim="description" class="form-control mb-3" rows="4" maxlength="3000" required></textarea>
