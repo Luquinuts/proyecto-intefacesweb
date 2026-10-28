@@ -12,21 +12,32 @@ export default {
     beforeUnmount() { $(this.$el).off('input', '#consultation-filter'); },
     methods: {
         selectConsultation(consultation) { this.$emit('select', consultation); },
+        getStatusLabel(status) {
+            const labels = {
+                received: 'Recibida',
+                under_review: 'En revisión',
+                scheduled: 'Agendada',
+                closed: 'Cerrada',
+            };
+            return labels[status] || status;
+        },
     },
     template: `
         <section class="card shadow-sm p-3">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <h2 class="h5 mb-0">Your consultations</h2>
-                <input id="consultation-filter" class="form-control form-control-sm w-50" placeholder="Filter">
+                <h2 class="h5 mb-0">Consultas</h2>
+                <input id="consultation-filter" class="form-control form-control-sm w-50" placeholder="Filtrar">
             </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
-                    <thead><tr><th>Description</th><th>Status</th><th>Date</th></tr></thead>
+                    <thead><tr><th>Descripción</th><th>Estado</th><th>Fecha</th></tr></thead>
                     <tbody>
                         <tr v-for="consultation in consultations" :key="consultation.id" @click="selectConsultation(consultation)">
-                            <td>{{ consultation.description }}</td><td>{{ consultation.status }}</td><td>{{ consultation.requested_at }}</td>
+                            <td>{{ consultation.description }}</td>
+                            <td>{{ getStatusLabel(consultation.status) }}</td>
+                            <td>{{ consultation.requested_at }}</td>
                         </tr>
-                        <tr v-if="!consultations.length"><td colspan="3">No consultations yet.</td></tr>
+                        <tr v-if="!consultations.length"><td colspan="3">Aún no hay consultas.</td></tr>
                     </tbody>
                 </table>
             </div>

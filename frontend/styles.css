@@ -1,4 +1,156 @@
-body { background: #f5f1ea; color: #263238; }
-.pasos-card { max-width: 760px; margin: 0 auto; }
-.brand { letter-spacing: .15em; }
-.table tbody tr { cursor: pointer; }
+@font-face {
+    font-family: 'Rustand Soft Black SemiExpanded';
+    src: url('https://fonts.cdnfonts.com/s/106012/Rustand%20Soft%20Black%20SemiExpanded.woff2') format('woff2');
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+* {
+    font-family: 'Rustand Soft Black SemiExpanded', 'Arial Black', Arial, sans-serif;
+}
+
+body {
+    background: #D9D1C7;
+    color: #0D0D0D;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+.pasos-header,
+.pasos-footer {
+    background: #112620;
+    color: #D9D1C7;
+}
+
+.pasos-header .brand,
+.pasos-footer small {
+    color: #BF9169;
+    letter-spacing: .25em;
+}
+
+.pasos-card {
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+.brand {
+    letter-spacing: .25em;
+    color: #BF9169;
+    text-transform: uppercase;
+}
+
+h1, h2, h3, h4, h5 {
+    color: #D9D1C7;
+}
+
+.card {
+    background: #224035;
+    border: 1px solid #BF9169;
+    color: #D9D1C7;
+}
+
+.form-control,
+.form-select {
+    background: #112620;
+    border: 1px solid #BF9169;
+    color: #D9D1C7;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background: #112620;
+    color: #D9D1C7;
+    border-color: #BF9169;
+    box-shadow: 0 0 0 0.25rem rgba(191, 145, 105, 0.25);
+}
+
+.form-label {
+    color: #D9D1C7;
+}
+
+.btn-primary {
+    background: #BF9169;
+    border-color: #BF9169;
+    color: #0D0D0D;
+    font-weight: 700;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background: #d1a07a;
+    border-color: #d1a07a;
+    color: #0D0D0D;
+}
+
+.btn-secondary {
+    background: #0D0D0D;
+    border-color: #BF9169;
+    color: #D9D1C7;
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus {
+    background: #000000;
+    border-color: #BF9169;
+    color: #D9D1C7;
+}
+
+.btn-outline-secondary {
+    background: transparent;
+    border-color: #BF9169;
+    color: #BF9169;
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus {
+    background: #BF9169;
+    color: #0D0D0D;
+}
+
+.table {
+    color: #D9D1C7;
+}
+
+.table thead th {
+    background: #112620;
+    border-color: #BF9169;
+    color: #BF9169;
+}
+
+.table tbody tr {
+    cursor: pointer;
+    background: transparent;
+}
+
+.table tbody tr:hover {
+    background: #112620;
+}
+
+.table td,
+.table th {
+    border-color: #BF9169;
+}
+
+.alert-info {
+    background: #112620;
+    border-color: #BF9169;
+    color: #D9D1C7;
+}
+
+.alert-secondary {
+    background: #112620;
+    border-color: #BF9169;
+    color: #D9D1C7;
+}
+
+.alert-danger {
+    background: #0D0D0D;
+    border-color: #BF9169;
+    color: #BF9169;
+}

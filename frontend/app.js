@@ -1,8 +1,7 @@
-import { createApp } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
 import LoginView from './views/LoginView.js';
 import ConsultationsView from './views/ConsultationsView.js';
 
-const { ref } = Vue;
+const { createApp, ref } = Vue;
 
 createApp({
     components: { LoginView, ConsultationsView },
@@ -12,7 +11,13 @@ createApp({
         const showConsultations = (loginRole) => {
             role.value = loginRole || 'user';
             authenticated.value = true;
+            window.location.hash = '#consultations';
         };
+        window.addEventListener('hashchange', () => {
+            if (window.location.hash === '#consultations') {
+                authenticated.value = true;
+            }
+        });
         return { authenticated, role, showConsultations };
     },
     template: `

@@ -56,13 +56,21 @@ function consultationFromRow(array $row): array
 
 if ($method === 'GET') {
     if ($isCollection) {
-        if ($canReview) {
+        if ($canReview && $role === 'administrator') {
             $statement = $conexion->prepare(
                 'SELECT c.id, c.description, c.contact_preference, c.status,
                         c.professional_note, c.requested_at, u.email AS user_email
                  FROM consultations c INNER JOIN users u ON u.id = c.user_id
                  ORDER BY c.requested_at DESC'
             );
+        } elseif ($role === 'professional') {
+            $statement = $conexion->prepare(
+                'SELECT c.id, c.description, c.contact_preference, c.status,
+                        c.professional_note, c.requested_at, u.email AS user_email
+                 FROM consultations c INNER JOIN users u ON u.id = c.user_id
+                 WHERE c.professional_id = ? ORDER BY c.requested_at DESC'
+            );
+            $statement->bind_param('i', $userId);
         } else {
             $statement = $conexion->prepare(
                 'SELECT c.id, c.description, c.contact_preference, c.status,
@@ -108,10 +116,21 @@ if ($method === 'POST') {
     if ($description === '' || strlen($description) > 3000 || !in_array($contactPreference, ['email', 'phone', 'video'], true)) {
         respond(['correcto' => false, 'mensaje' => 'Invalid consultation data.'], 400);
     }
+    $profId = null;
+    if ($role === 'user') {
+        $profStmt = $conexion->prepare("SELECT id FROM users WHERE role='professional' ORDER BY id ASC LIMIT 1");
+        if ($profStmt && $profStmt->execute()) {
+            $profRes = $profStmt->get_result();
+            if ($profRow = $profRes->fetch_assoc()) {
+                $profId = (int) $profRow['id'];
+            }
+            $profStmt->close();
+        }
+    }
     $statement = $conexion->prepare(
-        'INSERT INTO consultations (user_id, description, contact_preference) VALUES (?, ?, ?)'
+        'INSERT INTO consultations (user_id, professional_id, description, contact_preference) VALUES (?, ?, ?, ?)'
     );
-    $statement->bind_param('iss', $userId, $description, $contactPreference);
+    $statement->bind_param('iiss', $userId, $profId, $description, $contactPreference);
     if (!$statement->execute()) {
         respond(['correcto' => false, 'mensaje' => 'Could not create consultation.'], 500);
     }

@@ -16,7 +16,7 @@ const auth = getAuth(initializeApp(firebaseConfig));
 export default {
     emits: ['authenticated'],
     data() {
-        return { email: '', password: '', captcha: '', captchaQuestion: 'Loading…', message: '', loading: false };
+        return { email: '', password: '', captcha: '', captchaQuestion: 'Cargando…', message: '', loading: false };
     },
     async mounted() {
         const response = await fetch('../backend/captcha.php');
@@ -27,7 +27,7 @@ export default {
         async submitLogin() {
             this.message = '';
             if (!this.email || !this.password || !this.captcha) {
-                this.message = 'Complete email, password, and captcha.';
+                this.message = 'Complete el correo electrónico, la contraseña y el captcha.';
                 return;
             }
             this.loading = true;
@@ -53,14 +53,14 @@ export default {
                 });
                 const sessionResult = await sessionResponse.json();
                 if (sessionResult.correcto === true) {
-                    window.location.hash = 'consultations';
                     this.$emit('authenticated', sessionResult.rol);
+                    window.location.hash = '#consultations';
                 } else {
                     this.message = 'No fue posible crear la sesión.';
                 }
             } catch (error) {
                 console.error(error);
-                this.message = 'Email o contraseña incorrectos.';
+                this.message = 'Correo electrónico o contraseña incorrectos.';
             } finally {
                 this.loading = false;
             }
@@ -68,15 +68,15 @@ export default {
     },
     template: `
         <form @submit.prevent="submitLogin" class="card shadow-sm p-4">
-            <h2 class="h4 mb-3">Sign in to continue</h2>
-            <label class="form-label" for="email">Email</label>
+            <h2 class="h4 mb-3">Iniciar sesión para continuar</h2>
+            <label class="form-label" for="email">Correo electrónico</label>
             <input id="email" v-model.trim="email" type="email" class="form-control mb-3" required>
-            <label class="form-label" for="password">Password</label>
+            <label class="form-label" for="password">Contraseña</label>
             <input id="password" v-model="password" type="password" class="form-control mb-3" required>
             <label class="form-label" for="captcha">Captcha: {{ captchaQuestion }}</label>
             <input id="captcha" v-model="captcha" type="number" class="form-control mb-3" required>
             <p v-if="message" class="alert alert-danger">{{ message }}</p>
-            <button class="btn btn-primary" :disabled="loading">{{ loading ? 'Signing in…' : 'Sign in' }}</button>
+            <button class="btn btn-primary" :disabled="loading">{{ loading ? 'Iniciando sesión…' : 'Iniciar sesión' }}</button>
         </form>
     `,
 };

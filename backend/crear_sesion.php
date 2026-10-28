@@ -46,11 +46,12 @@ $emailFound = $statement->fetch();
 $statement->close();
 
 if ($emailFound && $storedUid !== $uid) {
-    if ($storedUid === 'replace-with-firebase-uid' && $storedRole === 'administrator') {
+    if (($storedUid === 'replace-with-firebase-uid' && $storedRole === 'administrator') ||
+        (strpos($storedUid, 'pending-') === 0)) {
         $statement = $conexion->prepare('UPDATE users SET firebase_uid = ?, name = ? WHERE email = ?');
         if (!$statement) {
             http_response_code(500);
-            echo json_encode(['correcto' => false, 'mensaje' => 'Could not prepare administrator update.']);
+            echo json_encode(['correcto' => false, 'mensaje' => 'Could not prepare user update.']);
             exit;
         }
         $statement->bind_param('sss', $uid, $name, $email);
