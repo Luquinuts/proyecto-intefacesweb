@@ -113,7 +113,6 @@ export default {
         <section class="pasos-card">
             <header class="mb-4 d-flex justify-content-between align-items-start">
                 <div>
-                    <p class="brand fw-bold">PASOS</p>
                     <h1 class="h3">Tu siguiente paso razonable empieza por entender.</h1>
                 </div>
                 <button class="btn btn-outline-secondary btn-sm" @click="logout">Cerrar sesión</button>

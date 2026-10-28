@@ -11,8 +11,27 @@
 }
 
 body {
+    background: #D9D1C7;
+    color: #0D0D0D;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+.pasos-header,
+.pasos-footer {
     background: #112620;
     color: #D9D1C7;
+}
+
+.pasos-header .brand,
+.pasos-footer small {
+    color: #BF9169;
+    letter-spacing: .25em;
 }
 
 .pasos-card {
