@@ -47,4 +47,5 @@ The project needs a clear, reviewable plan before implementation. The proposal m
 - Work-unit commit: `c4bc89a` (`develop: docs(pasos): define academic project scope`).
 - Verification: `git diff --check` passed; required technology and assignment terms were found; RDD assessment classified the committed documentation as `passive` and `review_due: false`.
 - Scope update: group submission and Firebase Authentication method confirmed by the user.
-- Next step: confirm the remaining Firebase provider, local password, captcha, API, and privacy decisions before implementing application code.
+- Authentication update: preserve the first-partial Firebase v10 modular email/password flow: captcha validation, Firebase sign-in, ID-token retrieval, JSON POST to `crear_sesion.php`, confirmed PHP session, and redirect.
+- Next step: confirm the remaining token-verification level, `password_hash()` demonstration, API, and privacy decisions before implementing application code.

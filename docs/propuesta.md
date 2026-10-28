@@ -29,7 +29,7 @@ The practical assignment requires a front end using Vue.js, HTML5, CSS, Bootstra
 
 ### Needs confirmation
 
-- Which Firebase sign-in option is expected: social providers, email/password form, or both. Firebase Authentication itself is confirmed as the method.
+- The Firebase sign-in method is the same as the first partial: Firebase v10 modular email/password authentication followed by a PHP session.
 - Whether the teacher expects a local PHP password flow in addition to Firebase Authentication. Firebase normally manages authentication credentials; the assignment separately mentions password hashing, so this boundary must be confirmed before storing any local credential.
 - Whether a real captcha provider, a local development substitute, or a teacher-approved demonstration is required.
 - Whether the consultation evidence may contain real personal or sensitive legal information. The demo should use invented data unless permission and privacy rules are confirmed.
@@ -37,7 +37,7 @@ The practical assignment requires a front end using Vue.js, HTML5, CSS, Bootstra
 ## User flow
 
 1. **Landing view — Understand the service.** The user sees the PASOS purpose, limits, confidentiality notice, and a clear action to sign in or start a request.
-2. **Login view — Authenticate.** The user signs in through the confirmed Firebase method. The login form sends the captcha token to the PHP boundary for server-side verification before the request is accepted.
+2. **Login view — Authenticate.** The user enters email, password, and the PHP-session captcha. The client validates the captcha through `validar_captcha.php`, signs in with Firebase email/password, obtains the Firebase ID token, sends `email`, `uid`, and `token` as JSON to `crear_sesion.php`, and redirects only after PHP confirms the session.
 3. **Request view — Tell us what happened.** The authenticated user submits a short description, contact preference, and optional category. The form shows basic client feedback but does not make legal conclusions.
 4. **Requests view — Follow the request.** The user sees their own requests in a Bootstrap table. jQuery handles the required data submission and selection-table interaction, while the REST API supplies the records.
 5. **Request detail — Review the next step.** The user sees the request status and a plain-language professional note when one exists. The page states that the application does not replace a lawyer-client relationship.
@@ -66,7 +66,7 @@ Bootstrap supplies the basic form, table, alert, and responsive layout styles. P
 
 ### Confirmed assignment boundary
 
-- Firebase Authentication must allow users to sign in through the approved social provider or login form.
+- Firebase Authentication must use the first-partial flow: modular Firebase v10 `signInWithEmailAndPassword` with email and password.
 - Login input must be validated and sanitized.
 - The login form must include captcha protection handled on the back end.
 - PHP forms must use the required HTTP method and superglobals, with processing separated from page presentation where applicable.
@@ -74,11 +74,11 @@ Bootstrap supplies the basic form, table, alert, and responsive layout styles. P
 
 ### Proposed boundary
 
-The client will obtain the Firebase authentication result, then the PHP API will accept only the authenticated user's identity and request data needed for the operation. PHP will validate types and required fields, sanitize values at the input boundary, use prepared `mysqli` statements for request-controlled values, and return explicit HTTP status codes.
+The client will validate the PHP-session captcha, obtain the Firebase authentication result and ID token, then send a JSON `POST` containing `email`, `uid`, and `token` to `crear_sesion.php`. PHP will validate the required JSON fields, create the session, return `{"correcto": true}`, and the client will redirect only after that confirmation. The later consultation API will accept only the authenticated user's identity and request data needed for the operation; PHP will validate types and required fields, sanitize values at the input boundary, use prepared `mysqli` statements for request-controlled values, and return explicit HTTP status codes.
 
 The login boundary will verify the captcha server-side before accepting the login-related request. The implementation will not claim that client-side validation or a hidden captcha field is sufficient.
 
-If a local password is confirmed as necessary, PHP will store only a `password_hash()` result and verify it with `password_verify()`. If Firebase is the sole credential authority, the database will store the Firebase user identifier and no duplicate password; this decision must be approved before implementation.
+The first-partial flow keeps credential authentication in Firebase. The local database will store the Firebase user identifier and no duplicate password. The assignment's `password_hash()` requirement must still be confirmed with the teacher; if it is required in addition to Firebase, it must be implemented as a separately documented academic boundary rather than silently replacing the Firebase flow.
 
 ## PHP/MySQL data model
 
@@ -107,7 +107,7 @@ The API will use noun-based resource URLs, JSON responses, and HTTP methods:
 | `POST /api/consultations` | Validate and create a consultation request. | Form submission creates a related MySQL record and returns a success status. |
 | `PATCH /api/consultations/{id}` | Update the permitted status or professional note. | Response inspection shows the updated record and rejects invalid input. |
 
-The exact authentication header, status-transition permissions, and whether `PATCH` is required by the teacher remain to be confirmed. The PHP route may be implemented with straightforward request-method checks; a framework router is out of scope.
+The exact consultation API authentication handoff, status-transition permissions, and whether `PATCH` is required by the teacher remain to be confirmed. The login handoff itself is fixed to the first-partial JSON session flow. PHP routes may be implemented with straightforward request-method checks; a framework router is out of scope.
 
 ## jQuery requirement
 
@@ -146,8 +146,8 @@ This proposal does not include automated legal advice, legal-document generation
 ## Unresolved decisions before implementation
 
 1. Confirm one-person versus two-person scope and the required breadth of the Backend.
-2. Confirm the Firebase provider or providers and the Firebase-to-PHP identity verification method permitted in the course environment.
-3. Confirm whether local password storage and the `password_hash()` demonstration are required when Firebase Authentication is used.
+2. Confirm the Firebase-to-PHP identity verification level permitted in the course environment while preserving the first-partial `email`, `uid`, and `token` session handoff.
+3. Confirm whether the `password_hash()` demonstration is required in addition to the Firebase email/password flow.
 4. Confirm the captcha provider and the exact server-side verification expected for the login form.
 5. Confirm whether the optional category table and the `PATCH` endpoint are useful for grading or should be removed from the minimum implementation.
 6. Confirm the data-privacy rules and use invented records for every public demonstration unless real data is explicitly authorized.
