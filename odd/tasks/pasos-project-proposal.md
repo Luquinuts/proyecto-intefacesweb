@@ -44,4 +44,6 @@ The project needs a clear, reviewable plan before implementation. The proposal m
 - Task document created before source documentation changes.
 - T1 and T2 completed by the delegated writer.
 - T3 completed by checking required terms, Markdown structure, whitespace, and the assignment-to-evidence mapping.
-- Next step: commit the documentation work unit.
+- Work-unit commit: `c4bc89a` (`develop: docs(pasos): define academic project scope`).
+- Verification: `git diff --check` passed; required technology and assignment terms were found; RDD assessment classified the committed documentation as `passive` and `review_due: false`.
+- Next step: confirm the unresolved scope decisions with the teacher before implementing application code.
