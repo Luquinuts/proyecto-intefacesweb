@@ -16,7 +16,7 @@ export default {
     template: `
         <section class="card shadow-sm p-3">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <h2 class="h5 mb-0">Tus consultas</h2>
+                <h2 class="h5 mb-0">Consultas</h2>
                 <input id="consultation-filter" class="form-control form-control-sm w-50" placeholder="Filtrar">
             </div>
             <div class="table-responsive">

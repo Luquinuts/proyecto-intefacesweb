@@ -56,7 +56,7 @@ function consultationFromRow(array $row): array
 
 if ($method === 'GET') {
     if ($isCollection) {
-        if ($canReview) {
+        if ($canReview && $role === 'administrator') {
             $statement = $conexion->prepare(
                 'SELECT c.id, c.description, c.contact_preference, c.status,
                         c.professional_note, c.requested_at, u.email AS user_email
