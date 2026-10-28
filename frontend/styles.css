@@ -1,0 +1,4 @@
+body { background: #f5f1ea; color: #263238; }
+.pasos-card { max-width: 760px; margin: 0 auto; }
+.brand { letter-spacing: .15em; }
+.table tbody tr { cursor: pointer; }
