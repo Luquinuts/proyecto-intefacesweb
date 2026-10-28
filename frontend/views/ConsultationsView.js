@@ -118,7 +118,7 @@ export default {
                 </div>
                 <button class="btn btn-outline-secondary btn-sm" @click="logout">Cerrar sesión</button>
             </header>
-            <form id="consultation-form" class="card shadow-sm p-3 mb-4">
+            <form v-if="role !== 'professional'" id="consultation-form" class="card shadow-sm p-3 mb-4">
                 <label class="form-label" for="description">¿Qué ocurrió?</label>
                 <textarea id="description" v-model.trim="description" class="form-control mb-3" rows="4" maxlength="3000" required></textarea>
                 <label class="form-label" for="contact-preference">Preferencia de contacto</label>
