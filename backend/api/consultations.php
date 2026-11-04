@@ -51,6 +51,8 @@ function consultationFromRow(array $row): array
         'professional_note' => $row['professional_note'],
         'requested_at' => $row['requested_at'],
         'user_email' => $row['user_email'] ?? null,
+        'scheduled_at' => $row['scheduled_at'] ?? null,
+        'meeting_link' => $row['meeting_link'] ?? null,
     ];
 }
 
@@ -59,14 +61,14 @@ if ($method === 'GET') {
         if ($canReview && $role === 'administrator') {
             $statement = $conexion->prepare(
                 'SELECT c.id, c.description, c.contact_preference, c.status,
-                        c.professional_note, c.requested_at, u.email AS user_email
+                        c.professional_note, c.requested_at, c.scheduled_at, c.meeting_link, u.email AS user_email
                  FROM consultations c INNER JOIN users u ON u.id = c.user_id
                  ORDER BY c.requested_at DESC'
             );
         } elseif ($role === 'professional') {
             $statement = $conexion->prepare(
                 'SELECT c.id, c.description, c.contact_preference, c.status,
-                        c.professional_note, c.requested_at, u.email AS user_email
+                        c.professional_note, c.requested_at, c.scheduled_at, c.meeting_link, u.email AS user_email
                  FROM consultations c INNER JOIN users u ON u.id = c.user_id
                  WHERE c.professional_id = ? ORDER BY c.requested_at DESC'
             );
@@ -74,7 +76,7 @@ if ($method === 'GET') {
         } else {
             $statement = $conexion->prepare(
                 'SELECT c.id, c.description, c.contact_preference, c.status,
-                        c.professional_note, c.requested_at, u.email AS user_email
+                        c.professional_note, c.requested_at, c.scheduled_at, c.meeting_link, u.email AS user_email
                  FROM consultations c INNER JOIN users u ON u.id = c.user_id
                  WHERE c.user_id = ? ORDER BY c.requested_at DESC'
             );
@@ -83,7 +85,7 @@ if ($method === 'GET') {
     } else {
         $statement = $conexion->prepare(
             'SELECT c.id, c.description, c.contact_preference, c.status,
-                    c.professional_note, c.requested_at, u.email AS user_email
+                    c.professional_note, c.requested_at, c.scheduled_at, c.meeting_link, u.email AS user_email
              FROM consultations c INNER JOIN users u ON u.id = c.user_id
              WHERE c.id = ? AND (? = 1 OR c.user_id = ?) LIMIT 1'
         );
@@ -143,22 +145,71 @@ if (!$canReview) {
     respond(['correcto' => false, 'mensaje' => 'Only administrators or professionals can update status.'], 401);
 }
 
-if (!is_array($datos) || !isset($datos['status']) || !in_array($datos['status'], ['received', 'under_review', 'scheduled', 'closed'], true)) {
-    respond(['correcto' => false, 'mensaje' => 'Invalid status.'], 400);
+if (!is_array($datos)) {
+    respond(['correcto' => false, 'mensaje' => 'Invalid data.'], 400);
 }
 
-$status = $datos['status'];
-$note = isset($datos['professional_note']) ? trim((string) $datos['professional_note']) : null;
-$statement = $conexion->prepare(
-    'UPDATE consultations SET status = ?, professional_note = ? WHERE id = ?'
-);
-$statement->bind_param('ssi', $status, $note, $id);
-if (!$statement->execute()) {
+$note = array_key_exists('professional_note', $datos) ? trim((string) $datos['professional_note']) : null;
+$status = isset($datos['status']) && in_array($datos['status'], ['received', 'under_review', 'scheduled', 'closed'], true) ? $datos['status'] : null;
+$scheduledAt = isset($datos['scheduled_at']) && $datos['scheduled_at'] !== '' ? trim((string) $datos['scheduled_at']) : null;
+$meetingLink = isset($datos['meeting_link']) && $datos['meeting_link'] !== '' ? trim((string) $datos['meeting_link']) : null;
+
+$check = $conexion->prepare('SELECT professional_id, contact_preference, user_id FROM consultations WHERE id = ? LIMIT 1');
+$check->bind_param('i', $id);
+$check->execute();
+$check->bind_result($profIdCheck, $contactPrefCheck, $ownerIdCheck);
+$foundCheck = $check->fetch();
+$check->close();
+if (!$foundCheck) {
+    respond(['correcto' => false, 'mensaje' => 'Consultation not found.'], 404);
+}
+if ($role === 'professional' && (int) $profIdCheck !== $userId) {
+    respond(['correcto' => false, 'mensaje' => 'Not authorized.'], 403);
+}
+
+$allowed = false;
+$sql = 'UPDATE consultations SET ';
+$types = '';
+$vals = [];
+
+if ($status !== null) {
+    $sql .= 'status = ?, ';
+    $types .= 's';
+    $vals[] = $status;
+    $allowed = true;
+}
+if ($note !== null || array_key_exists('professional_note', $datos)) {
+    $sql .= 'professional_note = ?, ';
+    $types .= 's';
+    $vals[] = $note;
+    $allowed = true;
+}
+if ($scheduledAt !== null && in_array($contactPrefCheck, ['phone', 'video'], true) && $role === 'professional') {
+    $sql .= 'scheduled_at = ?, status = ?, ';
+    $types .= 'ss';
+    $vals[] = str_replace('T', ' ', $scheduledAt);
+    $vals[] = 'scheduled';
+    $allowed = true;
+}
+if ($meetingLink !== null && $contactPrefCheck === 'video' && $role === 'professional') {
+    $sql .= 'meeting_link = ?, ';
+    $types .= 's';
+    $vals[] = $meetingLink;
+    $allowed = true;
+}
+
+if (!$allowed) {
+    respond(['correcto' => false, 'mensaje' => 'No changes.'], 400);
+}
+
+$sql = rtrim($sql, ', ') . ' WHERE id = ?';
+$types .= 'i';
+$vals[] = $id;
+$stmt = $conexion->prepare($sql);
+$stmt->bind_param($types, ...$vals);
+if (!$stmt->execute()) {
+    $stmt->close();
     respond(['correcto' => false, 'mensaje' => 'Could not update consultation.'], 500);
 }
-if ($statement->affected_rows === 0) {
-    $statement->close();
-    respond(['correcto' => false, 'mensaje' => 'Consultation not found or unchanged.'], 404);
-}
-$statement->close();
-respond(['correcto' => true, 'id' => $id, 'status' => $status], 200);
+$stmt->close();
+respond(['correcto' => true, 'id' => $id], 200);

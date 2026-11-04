@@ -12,6 +12,8 @@ export default {
             updateStatus: 'received',
             professionalNote: '',
             message: '',
+            scheduleDateTime: '',
+            meetingLink: '',
         };
     },
     mounted() {
@@ -37,6 +39,8 @@ export default {
             this.selected = consultation;
             this.updateStatus = consultation.status;
             this.professionalNote = consultation.professional_note || '';
+            this.scheduleDateTime = consultation.scheduled_at ? consultation.scheduled_at.replace(' ', 'T').substring(0, 16) : '';
+            this.meetingLink = consultation.meeting_link || '';
         },
         async submitConsultation(event) {
             event.preventDefault();
@@ -62,6 +66,27 @@ export default {
             });
             const result = await response.json();
             this.message = result.correcto ? 'Consulta actualizada.' : (result.mensaje || 'No se pudo actualizar la consulta.');
+            if (result.correcto) {
+                await this.loadConsultations();
+                this.selected = this.consultations.find((consultation) => consultation.id === this.selected.id) || null;
+            }
+        },
+        async scheduleConsultation() {
+            if (!this.scheduleDateTime) {
+                this.message = 'Selecciona fecha y hora.';
+                return;
+            }
+            const payload = { scheduled_at: this.scheduleDateTime };
+            if (this.selected.contact_preference === 'video' && this.meetingLink) {
+                payload.meeting_link = this.meetingLink;
+            }
+            const response = await fetch(`../backend/api/consultations.php/${this.selected.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const result = await response.json();
+            this.message = result.correcto ? 'Cita agendada.' : (result.mensaje || 'No se pudo agendar la cita.');
             if (result.correcto) {
                 await this.loadConsultations();
                 this.selected = this.consultations.find((consultation) => consultation.id === this.selected.id) || null;
@@ -107,7 +132,15 @@ export default {
             <article v-if="selected" class="alert alert-secondary mt-3">
                 <strong>Consulta seleccionada:</strong> {{ selected.description }}<br>
                 <span>Preferencia de contacto: {{ getContactLabel(selected.contact_preference) }}</span><br>
-                <span>Estado: {{ getStatusLabel(selected.status) }}</span>
+                <span>Estado: {{ getStatusLabel(selected.status) }}</span><br>
+                <span v-if="selected.scheduled_at">Fecha/hora: {{ selected.scheduled_at }}</span><br v-if="selected.scheduled_at">
+                <span v-if="selected.meeting_link">Enlace: <a :href="selected.meeting_link" target="_blank">{{ selected.meeting_link }}</a></span><br v-if="selected.meeting_link">
+                <div v-if="role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video')" class="mt-3">
+                    <label class="form-label" for="schedule-datetime">Agendar cita</label>
+                    <input id="schedule-datetime" type="datetime-local" v-model="scheduleDateTime" class="form-control mb-2" style="max-width: 280px;">
+                    <input v-if="selected.contact_preference === 'video'" type="url" v-model="meetingLink" class="form-control mb-2" placeholder="Enlace de videollamada" style="max-width: 280px;">
+                    <button class="btn btn-secondary btn-sm" @click="scheduleConsultation">Agendar</button>
+                </div>
                 <form v-if="role === 'administrator' || role === 'professional'" id="consultation-update-form" class="mt-3" @submit="updateConsultation">
                     <label class="form-label" for="consultation-status">Estado</label>
                     <select id="consultation-status" v-model="updateStatus" class="form-select mb-2">
