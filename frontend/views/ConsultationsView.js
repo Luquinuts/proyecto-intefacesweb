@@ -43,6 +43,9 @@ export default {
                             const hours = String(now.getHours()).padStart(2, '0');
                             const minutes = String(now.getMinutes()).padStart(2, '0');
                             this.scheduleDateTime = `${date}T${hours}:${minutes}`;
+                            calEl.querySelectorAll('.fc-daygrid-day').forEach(d => d.style.backgroundColor = '');
+                            info.dayEl.style.backgroundColor = '#BF9169';
+                            info.dayEl.style.border = '2px solid #112620';
                         }
                     });
                     calendar.render();
