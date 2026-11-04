@@ -14,6 +14,8 @@ export default {
             message: '',
             scheduleDateTime: '',
             meetingLink: '',
+            selectedDate: '',
+            scheduleTime: '',
         };
     },
     mounted() {
@@ -38,11 +40,12 @@ export default {
                             right: 'dayGridMonth,timeGridWeek,timeGridDay'
                         },
                         dateClick: (info) => {
+                            this.selectedDate = info.dateStr;
                             const now = new Date();
-                            const date = info.dateStr;
                             const hours = String(now.getHours()).padStart(2, '0');
                             const minutes = String(now.getMinutes()).padStart(2, '0');
-                            this.scheduleDateTime = `${date}T${hours}:${minutes}`;
+                            this.scheduleTime = `${hours}:${minutes}`;
+                            this.updateDateTime();
                             calEl.querySelectorAll('.fc-daygrid-day').forEach(d => d.style.backgroundColor = '');
                             info.dayEl.style.backgroundColor = '#BF9169';
                             info.dayEl.style.border = '2px solid #112620';
@@ -71,6 +74,13 @@ export default {
             this.updateStatus = consultation.status;
             this.professionalNote = consultation.professional_note || '';
             this.scheduleDateTime = consultation.scheduled_at ? consultation.scheduled_at.replace(' ', 'T').substring(0, 16) : '';
+            if (this.scheduleDateTime) {
+                this.selectedDate = this.scheduleDateTime.split('T')[0];
+                this.scheduleTime = this.scheduleDateTime.split('T')[1];
+            } else {
+                this.selectedDate = '';
+                this.scheduleTime = '';
+            }
             this.meetingLink = consultation.meeting_link || '';
         },
         async submitConsultation(event) {
@@ -100,6 +110,11 @@ export default {
             if (result.correcto) {
                 await this.loadConsultations();
                 this.selected = this.consultations.find((consultation) => consultation.id === this.selected.id) || null;
+            }
+        },
+        updateDateTime() {
+            if (this.selectedDate && this.scheduleTime) {
+                this.scheduleDateTime = `${this.selectedDate}T${this.scheduleTime}`;
             }
         },
         async scheduleConsultation() {
@@ -169,6 +184,10 @@ export default {
                 <div v-if="role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video')" class="mt-3">
                     <label class="form-label">Agendar cita con calendario</label>
                     <div id="schedule-calendar" class="mb-2"></div>
+                    <div v-if="selectedDate" class="mb-2">
+                        <label class="form-label">Horario</label>
+                        <input type="time" v-model="scheduleTime" class="form-control" style="max-width: 200px;" @change="updateDateTime">
+                    </div>
                     <input type="datetime-local" v-model="scheduleDateTime" class="form-control mb-2" style="max-width: 280px;">
                     <input v-if="selected.contact_preference === 'video'" type="url" v-model="meetingLink" class="form-control mb-2" placeholder="Enlace de Google Meet" style="max-width: 320px;">
                     <button class="btn btn-secondary btn-sm" @click="scheduleConsultation">Agendar</button>
