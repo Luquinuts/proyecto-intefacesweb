@@ -140,6 +140,19 @@ export default {
                 this.selected = this.consultations.find((consultation) => consultation.id === this.selected.id) || null;
             }
         },
+        async markClosed() {
+            const response = await fetch(`../backend/api/consultations.php/${this.selected.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'closed' }),
+            });
+            const result = await response.json();
+            this.message = result.correcto ? 'Consulta cerrada.' : (result.mensaje || 'No se pudo cerrar la consulta.');
+            if (result.correcto) {
+                await this.loadConsultations();
+                this.selected = this.consultations.find((consultation) => consultation.id === this.selected.id) || null;
+            }
+        },
         getStatusLabel(status) {
             const labels = {
                 received: 'Recibida',
@@ -198,12 +211,12 @@ export default {
                     <input v-if="selected.contact_preference === 'video'" type="url" v-model="meetingLink" class="form-control mb-2" placeholder="Enlace de Google Meet" style="max-width: 320px;">
                     <button class="btn btn-secondary btn-sm" @click="scheduleConsultation">Agendar</button>
                 </div>
-                <form v-if="role === 'administrator' || role === 'professional'" id="consultation-update-form" class="mt-3" @submit="updateConsultation">
+                <form v-if="(role === 'administrator' || role === 'professional') && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))" id="consultation-update-form" class="mt-3" @submit="updateConsultation">
                     <label class="form-label" for="consultation-status">Estado</label>
                     <select id="consultation-status" v-model="updateStatus" class="form-select mb-2">
                         <option v-if="selected.contact_preference !== 'phone' && selected.contact_preference !== 'video'" value="received">Recibida</option>
                         <option v-if="selected.contact_preference !== 'phone' && selected.contact_preference !== 'video'" value="under_review">En revisión</option>
-                        <option v-if="selected.scheduled_at || selected.contact_preference !== 'phone' && selected.contact_preference !== 'video'" value="scheduled">Agendada</option>
+                        <option v-if="selected.scheduled_at || (selected.contact_preference !== 'phone' && selected.contact_preference !== 'video')" value="scheduled">Agendada</option>
                         <option v-if="(selected.contact_preference === 'phone' || selected.contact_preference === 'video') && selected.scheduled_at" value="closed">Cerrada</option>
                         <option v-if="selected.contact_preference !== 'phone' && selected.contact_preference !== 'video'" value="closed">Cerrada</option>
                     </select>
@@ -211,6 +224,9 @@ export default {
                     <textarea id="professional-note" v-model.trim="professionalNote" class="form-control mb-2" rows="3" maxlength="3000"></textarea>
                     <button class="btn btn-secondary">Actualizar consulta</button>
                 </form>
+                <div v-if="role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video') && selected.scheduled_at" class="mt-3">
+                    <button class="btn btn-secondary btn-sm" @click="markClosed">Marcar como cerrada</button>
+                </div>
             </article>
         </section>
     `,
