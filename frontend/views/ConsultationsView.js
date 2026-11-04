@@ -117,6 +117,14 @@ export default {
             };
             return labels[status] || status;
         },
+        getContactLabel(pref) {
+            const labels = {
+                email: 'Correo electrónico',
+                phone: 'Teléfono',
+                video: 'Videollamada',
+            };
+            return labels[pref] || pref;
+        },
     },
     template: `
         <section class="pasos-card">
@@ -139,6 +147,7 @@ export default {
             <consultation-table :consultations="consultations" @select="selectConsultation"></consultation-table>
             <article v-if="selected" class="alert alert-secondary mt-3">
                 <strong>Consulta seleccionada:</strong> {{ selected.description }}<br>
+                <span>Preferencia de contacto: {{ getContactLabel(selected.contact_preference) }}</span><br>
                 <span>Estado: {{ getStatusLabel(selected.status) }}</span>
                 <form v-if="role === 'administrator' || role === 'professional'" id="consultation-update-form" class="mt-3" @submit="updateConsultation">
                     <label class="form-label" for="consultation-status">Estado</label>

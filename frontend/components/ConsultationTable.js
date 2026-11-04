@@ -21,6 +21,14 @@ export default {
             };
             return labels[status] || status;
         },
+        getContactLabel(pref) {
+            const labels = {
+                email: 'Correo electrónico',
+                phone: 'Teléfono',
+                video: 'Videollamada',
+            };
+            return labels[pref] || pref;
+        },
     },
     template: `
         <section class="card shadow-sm p-3">
@@ -30,14 +38,15 @@ export default {
             </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
-                    <thead><tr><th>Descripción</th><th>Estado</th><th>Fecha</th></tr></thead>
+                    <thead><tr><th>Descripción</th><th>Preferencia de contacto</th><th>Estado</th><th>Fecha</th></tr></thead>
                     <tbody>
                         <tr v-for="consultation in consultations" :key="consultation.id" @click="selectConsultation(consultation)">
                             <td>{{ consultation.description }}</td>
+                            <td>{{ getContactLabel(consultation.contact_preference) }}</td>
                             <td>{{ getStatusLabel(consultation.status) }}</td>
                             <td>{{ consultation.requested_at }}</td>
                         </tr>
-                        <tr v-if="!consultations.length"><td colspan="3">Aún no hay consultas.</td></tr>
+                        <tr v-if="!consultations.length"><td colspan="4">Aún no hay consultas.</td></tr>
                     </tbody>
                 </table>
             </div>
