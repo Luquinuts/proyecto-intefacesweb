@@ -197,7 +197,6 @@ export default {
                 <span v-if="selected.scheduled_at">Fecha/hora: {{ selected.scheduled_at }}</span><br v-if="selected.scheduled_at">
                 <span v-if="selected.meeting_link">Enlace: <a :href="selected.meeting_link" target="_blank">{{ selected.meeting_link }}</a></span><br v-if="selected.meeting_link">
                 <div v-if="role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video')" class="mt-3">
-                    <label class="form-label">Agendar cita con calendario</label>
                     <div id="schedule-calendar" class="mb-2"></div>
                     <div v-if="selectedDate" class="mt-3 p-3 border rounded" style="background: #112620; color: #D9D1C7;">
                         <div class="d-flex justify-content-between align-items-center mb-2">
