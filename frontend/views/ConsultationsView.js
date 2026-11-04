@@ -201,7 +201,11 @@ export default {
                 <form v-if="role === 'administrator' || role === 'professional'" id="consultation-update-form" class="mt-3" @submit="updateConsultation">
                     <label class="form-label" for="consultation-status">Estado</label>
                     <select id="consultation-status" v-model="updateStatus" class="form-select mb-2">
-                        <option value="received">Recibida</option><option value="under_review">En revisión</option><option value="scheduled">Agendada</option><option value="closed">Cerrada</option>
+                        <option v-if="selected.contact_preference !== 'phone' && selected.contact_preference !== 'video'" value="received">Recibida</option>
+                        <option v-if="selected.contact_preference !== 'phone' && selected.contact_preference !== 'video'" value="under_review">En revisión</option>
+                        <option v-if="selected.scheduled_at || selected.contact_preference !== 'phone' && selected.contact_preference !== 'video'" value="scheduled">Agendada</option>
+                        <option v-if="(selected.contact_preference === 'phone' || selected.contact_preference === 'video') && selected.scheduled_at" value="closed">Cerrada</option>
+                        <option v-if="selected.contact_preference !== 'phone' && selected.contact_preference !== 'video'" value="closed">Cerrada</option>
                     </select>
                     <label class="form-label" for="professional-note">Nota del profesional</label>
                     <textarea id="professional-note" v-model.trim="professionalNote" class="form-control mb-2" rows="3" maxlength="3000"></textarea>
