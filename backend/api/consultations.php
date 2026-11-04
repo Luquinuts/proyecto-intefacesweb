@@ -154,10 +154,10 @@ $status = isset($datos['status']) && in_array($datos['status'], ['received', 'un
 $scheduledAt = isset($datos['scheduled_at']) && $datos['scheduled_at'] !== '' ? trim((string) $datos['scheduled_at']) : null;
 $meetingLink = isset($datos['meeting_link']) && $datos['meeting_link'] !== '' ? trim((string) $datos['meeting_link']) : null;
 
-$check = $conexion->prepare('SELECT professional_id, contact_preference, user_id FROM consultations WHERE id = ? LIMIT 1');
+$check = $conexion->prepare('SELECT professional_id, contact_preference, user_id, status, scheduled_at FROM consultations WHERE id = ? LIMIT 1');
 $check->bind_param('i', $id);
 $check->execute();
-$check->bind_result($profIdCheck, $contactPrefCheck, $ownerIdCheck);
+$check->bind_result($profIdCheck, $contactPrefCheck, $ownerIdCheck, $currentStatus, $currentScheduledAt);
 $foundCheck = $check->fetch();
 $check->close();
 if (!$foundCheck) {
@@ -172,12 +172,6 @@ $sql = 'UPDATE consultations SET ';
 $types = '';
 $vals = [];
 
-if ($status !== null) {
-    $sql .= 'status = ?, ';
-    $types .= 's';
-    $vals[] = $status;
-    $allowed = true;
-}
 if ($note !== null || array_key_exists('professional_note', $datos)) {
     $sql .= 'professional_note = ?, ';
     $types .= 's';
@@ -196,6 +190,23 @@ if ($meetingLink !== null && $contactPrefCheck === 'video' && $role === 'profess
     $types .= 's';
     $vals[] = $meetingLink;
     $allowed = true;
+}
+if ($status !== null && $role === 'professional') {
+    if (in_array($contactPrefCheck, ['phone', 'video'], true)) {
+        if ($status === 'closed' && !empty($currentScheduledAt)) {
+            $sql .= 'status = ?, ';
+            $types .= 's';
+            $vals[] = $status;
+            $allowed = true;
+        }
+    } else {
+        if (in_array($status, ['received', 'under_review', 'scheduled', 'closed'], true)) {
+            $sql .= 'status = ?, ';
+            $types .= 's';
+            $vals[] = $status;
+            $allowed = true;
+        }
+    }
 }
 
 if (!$allowed) {
