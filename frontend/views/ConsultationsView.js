@@ -192,11 +192,12 @@ export default {
             <consultation-table :consultations="consultations" @select="selectConsultation"></consultation-table>
             <article v-if="selected" class="alert alert-secondary mt-3">
                 <strong>Consulta seleccionada:</strong> {{ selected.description }}<br>
-                <span>Preferencia de contacto: {{ getContactLabel(selected.contact_preference) }}</span><br>
-                <span>Estado: {{ getStatusLabel(selected.status) }}</span><br>
-                <span v-if="selected.scheduled_at">Fecha/hora: {{ selected.scheduled_at }}</span><br v-if="selected.scheduled_at">
-                <span v-if="selected.meeting_link">Enlace: <a :href="selected.meeting_link" target="_blank">{{ selected.meeting_link }}</a></span><br v-if="selected.meeting_link">
+                <span v-if="!(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Preferencia de contacto: {{ getContactLabel(selected.contact_preference) }}</span><br v-if="!(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
+                <span v-if="!(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Estado: {{ getStatusLabel(selected.status) }}</span><br v-if="!(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
+                <span v-if="selected.scheduled_at && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Fecha/hora: {{ selected.scheduled_at }}</span><br v-if="selected.scheduled_at && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
+                <span v-if="selected.meeting_link && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Enlace: <a :href="selected.meeting_link" target="_blank">{{ selected.meeting_link }}</a></span><br v-if="selected.meeting_link && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
                 <div v-if="role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video')" class="mt-3">
+                    <label class="form-label">Agendar cita con calendario</label>
                     <div id="schedule-calendar" class="mb-2"></div>
                     <div v-if="selectedDate" class="mt-3 p-3 border rounded" style="background: #112620; color: #D9D1C7;">
                         <div class="d-flex justify-content-between align-items-center mb-2">
