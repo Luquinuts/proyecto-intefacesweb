@@ -22,6 +22,34 @@ export default {
         $('#consultation-form').on('submit', this.submitHandler);
     },
     beforeUnmount() { $('#consultation-form').off('submit', this.submitHandler); },
+    updated() {
+        this.$nextTick(() => {
+            if (this.role === 'professional' && (this.selected && (this.selected.contact_preference === 'phone' || this.selected.contact_preference === 'video'))) {
+                const calEl = document.getElementById('schedule-calendar');
+                if (calEl && !calEl.dataset.init) {
+                    calEl.dataset.init = '1';
+                    const calendar = new FullCalendar.Calendar(calEl, {
+                        initialView: 'dayGridMonth',
+                        locale: 'es',
+                        height: 'auto',
+                        headerToolbar: {
+                            left: 'prev,next today',
+                            center: 'title',
+                            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                        },
+                        dateClick: (info) => {
+                            const now = new Date();
+                            const date = info.dateStr;
+                            const hours = String(now.getHours()).padStart(2, '0');
+                            const minutes = String(now.getMinutes()).padStart(2, '0');
+                            this.scheduleDateTime = `${date}T${hours}:${minutes}`;
+                        }
+                    });
+                    calendar.render();
+                }
+            }
+        });
+    },
     methods: {
         logout() {
             fetch('../backend/cerrar_sesion.php', { method: 'POST' })
@@ -136,9 +164,10 @@ export default {
                 <span v-if="selected.scheduled_at">Fecha/hora: {{ selected.scheduled_at }}</span><br v-if="selected.scheduled_at">
                 <span v-if="selected.meeting_link">Enlace: <a :href="selected.meeting_link" target="_blank">{{ selected.meeting_link }}</a></span><br v-if="selected.meeting_link">
                 <div v-if="role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video')" class="mt-3">
-                    <label class="form-label" for="schedule-datetime">Agendar cita</label>
-                    <input id="schedule-datetime" type="datetime-local" v-model="scheduleDateTime" class="form-control mb-2" style="max-width: 280px;">
-                    <input v-if="selected.contact_preference === 'video'" type="url" v-model="meetingLink" class="form-control mb-2" placeholder="Enlace de videollamada" style="max-width: 280px;">
+                    <label class="form-label">Agendar cita con calendario</label>
+                    <div id="schedule-calendar" class="mb-2"></div>
+                    <input type="datetime-local" v-model="scheduleDateTime" class="form-control mb-2" style="max-width: 280px;">
+                    <input v-if="selected.contact_preference === 'video'" type="url" v-model="meetingLink" class="form-control mb-2" placeholder="Enlace de Google Meet" style="max-width: 320px;">
                     <button class="btn btn-secondary btn-sm" @click="scheduleConsultation">Agendar</button>
                 </div>
                 <form v-if="role === 'administrator' || role === 'professional'" id="consultation-update-form" class="mt-3" @submit="updateConsultation">
