@@ -16,6 +16,7 @@ export default {
             meetingLink: '',
             selectedDate: '',
             scheduleTime: '',
+            timeSlots: ['09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00'],
         };
     },
     mounted() {
@@ -39,13 +40,10 @@ export default {
                             center: 'title',
                             right: 'dayGridMonth,timeGridWeek,timeGridDay'
                         },
-                        dateClick: (info) => {
+                                        dateClick: (info) => {
                             this.selectedDate = info.dateStr;
-                            const now = new Date();
-                            const hours = String(now.getHours()).padStart(2, '0');
-                            const minutes = String(now.getMinutes()).padStart(2, '0');
-                            this.scheduleTime = `${hours}:${minutes}`;
-                            this.updateDateTime();
+                            this.scheduleTime = '';
+                            this.scheduleDateTime = '';
                             calEl.querySelectorAll('.fc-daygrid-day').forEach(d => d.style.backgroundColor = '');
                             info.dayEl.style.backgroundColor = '#BF9169';
                             info.dayEl.style.border = '2px solid #112620';
@@ -111,6 +109,10 @@ export default {
                 await this.loadConsultations();
                 this.selected = this.consultations.find((consultation) => consultation.id === this.selected.id) || null;
             }
+        },
+        selectTime(slot) {
+            this.scheduleTime = slot;
+            this.scheduleDateTime = `${this.selectedDate}T${slot}`;
         },
         updateDateTime() {
             if (this.selectedDate && this.scheduleTime) {
@@ -184,11 +186,15 @@ export default {
                 <div v-if="role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video')" class="mt-3">
                     <label class="form-label">Agendar cita con calendario</label>
                     <div id="schedule-calendar" class="mb-2"></div>
-                    <div v-if="selectedDate" class="mb-2">
-                        <label class="form-label">Horario</label>
-                        <input type="time" v-model="scheduleTime" class="form-control" style="max-width: 200px;" @change="updateDateTime">
+                    <div v-if="selectedDate" class="mt-3 p-3 border rounded" style="background: #112620; color: #D9D1C7;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong>Horarios disponibles - {{ selectedDate }}</strong>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button v-for="slot in timeSlots" :key="slot" type="button" class="btn btn-sm" :class="scheduleTime === slot ? 'btn-primary' : 'btn-outline-secondary'" @click="selectTime(slot)">{{ slot }}</button>
+                        </div>
                     </div>
-                    <input type="datetime-local" v-model="scheduleDateTime" class="form-control mb-2" style="max-width: 280px;">
+                    <input type="datetime-local" v-model="scheduleDateTime" class="form-control mb-2 mt-2" style="max-width: 280px;">
                     <input v-if="selected.contact_preference === 'video'" type="url" v-model="meetingLink" class="form-control mb-2" placeholder="Enlace de Google Meet" style="max-width: 320px;">
                     <button class="btn btn-secondary btn-sm" @click="scheduleConsultation">Agendar</button>
                 </div>
