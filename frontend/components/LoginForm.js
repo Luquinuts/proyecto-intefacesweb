@@ -20,9 +20,20 @@ export default {
         return { email: '', password: '', captcha: '', captchaQuestion: 'Cargando…', message: '', loading: false };
     },
     async mounted() {
-        const response = await fetch(apiUrl('captcha.php'));
-        const result = await response.json();
-        this.captchaQuestion = result.pregunta;
+        try {
+            const response = await fetch(apiUrl('captcha.php'));
+            if (!response.ok) {
+                throw new Error(`Captcha request failed: ${response.status}`);
+            }
+            const result = await response.json();
+            if (!result.pregunta) {
+                throw new Error('Captcha response did not include a question');
+            }
+            this.captchaQuestion = result.pregunta;
+        } catch (error) {
+            console.error(error);
+            this.captchaQuestion = 'No se pudo cargar el captcha. Intente nuevamente.';
+        }
     },
     methods: {
         async submitLogin() {

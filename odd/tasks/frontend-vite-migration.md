@@ -57,5 +57,6 @@ Make the PASOS frontend runnable with `npm run dev` and align it with the Vue, B
 - Same-origin correction: Vite now proxies `/backend` to the XAMPP project so PHP session cookies do not require an unimplemented CORS boundary.
 - Runtime limitation: browser/XAMPP, Firebase, and Google OAuth flows were not exercised; npm reported 12 audit vulnerabilities and the build reported a large bundle warning.
 - Generated `frontend/dist/` is ignored and was removed from the working tree.
+- Follow-up correction: captcha loading now handles non-JSON HTTP errors, PHP returns a JSON error envelope, and the unavailable external font is no longer requested.
 - Work-unit commit: `e2413d4` (`developer: feat(frontend): run PASOS with Vite`), followed by the proxy correction pending commit.
 - Next step: push the migration commits after user confirmation.
