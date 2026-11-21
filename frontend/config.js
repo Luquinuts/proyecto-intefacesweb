@@ -1,4 +1,4 @@
-const defaultApiBaseUrl = 'http://localhost/proyecto-intefacesweb-develop/backend';
+const defaultApiBaseUrl = '/backend';
 
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || defaultApiBaseUrl).replace(/\/+$/, '');
 

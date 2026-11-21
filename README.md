@@ -36,6 +36,6 @@ npm install
 npm run dev
 ```
 
-Copy `frontend/.env.example` to `frontend/.env.local` when the backend uses a different URL and set `VITE_API_BASE_URL`. For Google OAuth, set the non-secret backend environment value `PASOS_FRONTEND_URL` to the Vite frontend URL; otherwise the callback falls back to the XAMPP frontend path. Keep Google credentials in `backend/config/google.local.php`, which is ignored by Git.
+The default Vite proxy expects the XAMPP project at `http://localhost/proyecto-intefacesweb-develop` and forwards `/backend` without changing that path. Copy `frontend/.env.example` to `frontend/.env.local` and set `VITE_API_BASE_URL` to a full API URL only when a deployment needs to bypass the proxy. For Google OAuth while using Vite, set the non-secret backend environment value `PASOS_FRONTEND_URL=http://127.0.0.1:5173/`; otherwise the callback falls back to the XAMPP frontend path. Keep Google credentials in `backend/config/google.local.php`, which is ignored by Git.
 
 The current MVP is implemented on the `developer` branch. The strategic proposal remains the scope reference, while runtime verification still requires XAMPP, MySQL, Firebase, and Google OAuth configuration.

@@ -32,7 +32,9 @@ Make the PASOS frontend runnable with `npm run dev` and align it with the Vue, B
 - `npm run dev` starts Vite and serves the Vue application.
 - Bootstrap is imported from npm in the frontend entry point and existing components continue using Bootstrap classes.
 - The app still contains the existing views and components, hash navigation, Firebase v10 email/password flow, jQuery interactions, and FullCalendar scheduling UI.
-- API calls work against the XAMPP PHP backend through one documented configuration value.
+- API calls work against the XAMPP PHP backend through the documented `/backend` Vite proxy, with `VITE_API_BASE_URL` available for full-URL deployments.
+- The default proxy targets `http://localhost/proyecto-intefacesweb-develop` and preserves the `/backend` path.
+- Google OAuth navigation uses the proxy and Vite callbacks use `PASOS_FRONTEND_URL=http://127.0.0.1:5173/`.
 - No credentials or local OAuth secrets are committed.
 
 ## Verification
@@ -50,8 +52,10 @@ Make the PASOS frontend runnable with `npm run dev` and align it with the Vue, B
 ## Progress
 
 - Task document created before source writes.
-- T1–T4 completed by the delegated writer.
+- T1–T4 completed by the delegated writer and the parent proxy correction.
 - Verification observed: `npm install` completed; `npm run build` passed; Vite served `http://127.0.0.1:5173/` with HTTP 200; frontend JavaScript syntax and static migration checks passed.
+- Same-origin correction: Vite now proxies `/backend` to the XAMPP project so PHP session cookies do not require an unimplemented CORS boundary.
 - Runtime limitation: browser/XAMPP, Firebase, and Google OAuth flows were not exercised; npm reported 12 audit vulnerabilities and the build reported a large bundle warning.
 - Generated `frontend/dist/` is ignored and was removed from the working tree.
-- Next step: parent review and commit the migration work unit.
+- Work-unit commit: `e2413d4` (`developer: feat(frontend): run PASOS with Vite`), followed by the proxy correction pending commit.
+- Next step: push the migration commits after user confirmation.
