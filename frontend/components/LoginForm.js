@@ -1,5 +1,6 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js';
-import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { apiUrl } from '../config.js';
 
 const firebaseConfig = {
     apiKey: 'AIzaSyCMqVjbCKVlVfad2P0devEoYPPVg35WOgE',
@@ -19,7 +20,7 @@ export default {
         return { email: '', password: '', captcha: '', captchaQuestion: 'Cargando…', message: '', loading: false };
     },
     async mounted() {
-        const response = await fetch('../backend/captcha.php');
+        const response = await fetch(apiUrl('captcha.php'));
         const result = await response.json();
         this.captchaQuestion = result.pregunta;
     },
@@ -32,7 +33,7 @@ export default {
             }
             this.loading = true;
             try {
-                const captchaResponse = await fetch('../backend/validar_captcha.php', {
+                const captchaResponse = await fetch(apiUrl('validar_captcha.php'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: 'captcha=' + encodeURIComponent(this.captcha),
@@ -46,7 +47,7 @@ export default {
                 const userCredential = await signInWithEmailAndPassword(auth, this.email, this.password);
                 const user = userCredential.user;
                 const token = await user.getIdToken();
-                const sessionResponse = await fetch('../backend/crear_sesion.php', {
+                const sessionResponse = await fetch(apiUrl('crear_sesion.php'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: user.email, uid: user.uid, token }),

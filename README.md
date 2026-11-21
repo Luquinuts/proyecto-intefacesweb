@@ -26,4 +26,16 @@ The repository will contain the course project proposal and, after scope confirm
 4. Implement only the confirmed front-end views, PHP pages, related MySQL tables, authentication boundary, and REST endpoints.
 5. Demonstrate the forms, authentication, database queries, REST responses, validation, captcha boundary, and final user flow in a video or PDF, together with the zipped Front, Backend, and `.sql` deliverables required by the assignment.
 
-No implementation is claimed by this README or by the proposal; both documents describe the scope to be confirmed before coding.
+## Local development
+
+The PHP backend must be served by XAMPP. To run the Vue frontend with Vite:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Copy `frontend/.env.example` to `frontend/.env.local` when the backend uses a different URL and set `VITE_API_BASE_URL`. For Google OAuth, set the non-secret backend environment value `PASOS_FRONTEND_URL` to the Vite frontend URL; otherwise the callback falls back to the XAMPP frontend path. Keep Google credentials in `backend/config/google.local.php`, which is ignored by Git.
+
+The current MVP is implemented on the `developer` branch. The strategic proposal remains the scope reference, while runtime verification still requires XAMPP, MySQL, Firebase, and Google OAuth configuration.

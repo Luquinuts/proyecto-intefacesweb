@@ -1,0 +1,24 @@
+{
+  "name": "pasos-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fullcalendar/core": "^6.1.15",
+    "@fullcalendar/daygrid": "^6.1.15",
+    "@fullcalendar/interaction": "^6.1.15",
+    "@fullcalendar/timegrid": "^6.1.15",
+    "bootstrap": "^5.3.3",
+    "firebase": "10.13.0",
+    "jquery": "^3.7.1",
+    "vue": "^3.5.22"
+  },
+  "devDependencies": {
+    "vite": "^7.1.7"
+  }
+}

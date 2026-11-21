@@ -1,10 +1,9 @@
+import { ref } from 'vue';
 import LoginView from './views/LoginView.js';
 import ConsultationsView from './views/ConsultationsView.js';
 import VideoCallView from './views/VideoCallView.js';
 
-const { createApp, ref } = Vue;
-
-createApp({
+export default {
     components: { LoginView, ConsultationsView, VideoCallView },
     setup() {
         const authenticated = ref(window.location.hash === '#consultations' || window.location.hash === '#videocall');
@@ -50,4 +49,4 @@ createApp({
             <video-call-view v-if="activeView === 'videocall'"></video-call-view>
         </div>
     `,
-}).mount('#app');
+};

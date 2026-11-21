@@ -1,4 +1,5 @@
 backend/config/google.local.php
 node_modules/
+frontend/dist/
 .DS_Store
 Thumbs.db

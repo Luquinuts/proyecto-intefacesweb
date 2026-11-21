@@ -1,3 +1,5 @@
+import { apiUrl } from '../config.js';
+
 export default {
     data() {
         return {
@@ -10,7 +12,7 @@ export default {
     },
     methods: {
         async loadMeetings() {
-            const response = await fetch('../backend/api/videocall.php');
+            const response = await fetch(apiUrl('api/videocall.php'));
             const result = await response.json();
             if (result.correcto) {
                 this.meetings = result.meetings || [];

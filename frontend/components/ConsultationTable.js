@@ -1,3 +1,5 @@
+import $ from 'jquery';
+
 export default {
     props: { consultations: { type: Array, default: () => [] } },
     emits: ['select'],

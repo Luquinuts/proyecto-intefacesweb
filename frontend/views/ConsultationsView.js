@@ -1,3 +1,9 @@
+import $ from 'jquery';
+import { Calendar } from '@fullcalendar/core';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import { apiUrl } from '../config.js';
 import ConsultationTable from '../components/ConsultationTable.js';
 
 export default {
@@ -37,7 +43,8 @@ export default {
                 const calEl = document.getElementById('schedule-calendar');
                 if (calEl && !calEl.dataset.init) {
                     calEl.dataset.init = '1';
-                    const calendar = new FullCalendar.Calendar(calEl, {
+                    const calendar = new Calendar(calEl, {
+                        plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
                         initialView: 'dayGridMonth',
                         locale: 'es',
                         height: 'auto',
@@ -62,7 +69,7 @@ export default {
     },
     methods: {
         logout() {
-            fetch('../backend/cerrar_sesion.php', { method: 'POST' })
+            fetch(apiUrl('cerrar_sesion.php'), { method: 'POST' })
                 .finally(() => {
                     window.location.hash = '';
                     window.location.reload();
@@ -71,7 +78,7 @@ export default {
         async loadGoogleStatus() {
             if (this.role !== 'professional') return;
             try {
-                const response = await fetch('../backend/api/google_status.php');
+                const response = await fetch(apiUrl('api/google_status.php'));
                 const result = await response.json();
                 if (result.correcto) {
                     this.googleConnected = !!result.connected;
@@ -100,10 +107,10 @@ export default {
             window.location.hash = '#consultations';
         },
         connectGoogle() {
-            window.location.href = '../backend/api/google_auth.php';
+            window.location.href = apiUrl('api/google_auth.php');
         },
         async loadConsultations() {
-            const response = await fetch('../backend/api/consultations.php');
+            const response = await fetch(apiUrl('api/consultations.php'));
             const result = await response.json();
             if (result.correcto) this.consultations = result.consultations;
         },
@@ -124,7 +131,7 @@ export default {
         async submitConsultation(event) {
             event.preventDefault();
             this.message = '';
-            const response = await fetch('../backend/api/consultations.php', {
+            const response = await fetch(apiUrl('api/consultations.php'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ description: this.description, contact_preference: this.contactPreference }),
@@ -138,7 +145,7 @@ export default {
         },
         async updateConsultation(event) {
             event.preventDefault();
-            const response = await fetch(`../backend/api/consultations.php/${this.selected.id}`, {
+            const response = await fetch(apiUrl(`api/consultations.php/${this.selected.id}`), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: this.updateStatus, professional_note: this.professionalNote }),
@@ -169,7 +176,7 @@ export default {
                 return;
             }
             const payload = { scheduled_at: this.scheduleDateTime };
-            const response = await fetch(`../backend/api/consultations.php/${this.selected.id}`, {
+            const response = await fetch(apiUrl(`api/consultations.php/${this.selected.id}`), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
@@ -182,7 +189,7 @@ export default {
             }
         },
         async markClosed() {
-            const response = await fetch(`../backend/api/consultations.php/${this.selected.id}`, {
+            const response = await fetch(apiUrl(`api/consultations.php/${this.selected.id}`), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'closed' }),
