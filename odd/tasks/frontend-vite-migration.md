@@ -60,3 +60,17 @@ Make the PASOS frontend runnable with `npm run dev` and align it with the Vue, B
 - Follow-up correction: captcha loading now handles non-JSON HTTP errors, PHP returns a JSON error envelope, and the unavailable external font is no longer requested.
 - Work-unit commit: `e2413d4` (`developer: feat(frontend): run PASOS with Vite`), followed by the proxy correction pending commit.
 - Next step: push the migration commits after user confirmation.
+
+## Follow-up: PASOS 500 schema/API correction
+
+- [x] Add the consultation scheduling fields and professional foreign key to the base schema and make the Google Calendar migration idempotent for existing databases.
+- [x] Handle non-OK or non-JSON consultation and videollamada responses without throwing `Unexpected end of JSON input`.
+
+### Authorized scope
+
+`database/pasos.sql`, `database/google_calendar_migration.sql`, `frontend/views/ConsultationsView.js`, `frontend/views/VideoCallView.js`, and this task document only.
+
+### Verification notes
+
+- The runtime mismatch was verified against the local `pasos.consultations` table: `google_event_id` existed, while `professional_id`, `scheduled_at`, and `meeting_link` were absent.
+- No deterministic RED test exists for this runtime schema mismatch; syntax checks, the frontend build, and local MariaDB migration verification are the applicable checks.

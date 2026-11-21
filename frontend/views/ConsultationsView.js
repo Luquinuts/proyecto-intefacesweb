@@ -6,6 +6,24 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { apiUrl } from '../config.js';
 import ConsultationTable from '../components/ConsultationTable.js';
 
+async function requestJson(url, options, fallbackMessage) {
+    try {
+        const response = await fetch(url, options);
+        let result = {};
+        try {
+            result = await response.json();
+        } catch (error) {
+            result = {};
+        }
+        if (!response.ok) {
+            return { correcto: false, mensaje: result.mensaje || fallbackMessage };
+        }
+        return result;
+    } catch (error) {
+        return { correcto: false, mensaje: fallbackMessage };
+    }
+}
+
 export default {
     components: { ConsultationTable },
     props: { role: { type: String, default: 'user' } },
@@ -77,15 +95,12 @@ export default {
         },
         async loadGoogleStatus() {
             if (this.role !== 'professional') return;
-            try {
-                const response = await fetch(apiUrl('api/google_status.php'));
-                const result = await response.json();
-                if (result.correcto) {
-                    this.googleConnected = !!result.connected;
-                    this.googleEmail = result.google_email || '';
-                    this.googleConfigured = result.configured !== false;
-                }
-            } catch (e) {
+            const result = await requestJson(apiUrl('api/google_status.php'), undefined, 'No se pudo consultar Google Calendar.');
+            if (result.correcto) {
+                this.googleConnected = !!result.connected;
+                this.googleEmail = result.google_email || '';
+                this.googleConfigured = result.configured !== false;
+            } else {
                 this.googleConnected = false;
             }
         },
@@ -110,9 +125,9 @@ export default {
             window.location.href = apiUrl('api/google_auth.php');
         },
         async loadConsultations() {
-            const response = await fetch(apiUrl('api/consultations.php'));
-            const result = await response.json();
+            const result = await requestJson(apiUrl('api/consultations.php'), undefined, 'No se pudieron cargar las consultas.');
             if (result.correcto) this.consultations = result.consultations;
+            else this.message = result.mensaje;
         },
         selectConsultation(consultation) {
             this.selected = consultation;
@@ -131,12 +146,11 @@ export default {
         async submitConsultation(event) {
             event.preventDefault();
             this.message = '';
-            const response = await fetch(apiUrl('api/consultations.php'), {
+            const result = await requestJson(apiUrl('api/consultations.php'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ description: this.description, contact_preference: this.contactPreference }),
-            });
-            const result = await response.json();
+            }, 'No se pudo enviar la consulta.');
             if (result.correcto) {
                 this.description = '';
                 this.message = 'Consulta enviada.';
@@ -145,12 +159,11 @@ export default {
         },
         async updateConsultation(event) {
             event.preventDefault();
-            const response = await fetch(apiUrl(`api/consultations.php/${this.selected.id}`), {
+            const result = await requestJson(apiUrl(`api/consultations.php/${this.selected.id}`), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: this.updateStatus, professional_note: this.professionalNote }),
-            });
-            const result = await response.json();
+            }, 'No se pudo actualizar la consulta.');
             this.message = result.correcto ? 'Consulta actualizada.' : (result.mensaje || 'No se pudo actualizar la consulta.');
             if (result.correcto) {
                 await this.loadConsultations();
@@ -176,12 +189,11 @@ export default {
                 return;
             }
             const payload = { scheduled_at: this.scheduleDateTime };
-            const response = await fetch(apiUrl(`api/consultations.php/${this.selected.id}`), {
+            const result = await requestJson(apiUrl(`api/consultations.php/${this.selected.id}`), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
-            });
-            const result = await response.json();
+            }, 'No se pudo agendar la cita.');
             this.message = result.correcto ? 'Cita agendada y sincronizada con Google Calendar.' : (result.mensaje || 'No se pudo agendar la cita.');
             if (result.correcto) {
                 await this.loadConsultations();
@@ -189,12 +201,11 @@ export default {
             }
         },
         async markClosed() {
-            const response = await fetch(apiUrl(`api/consultations.php/${this.selected.id}`), {
+            const result = await requestJson(apiUrl(`api/consultations.php/${this.selected.id}`), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'closed' }),
-            });
-            const result = await response.json();
+            }, 'No se pudo cerrar la consulta.');
             this.message = result.correcto ? 'Consulta cerrada.' : (result.mensaje || 'No se pudo cerrar la consulta.');
             if (result.correcto) {
                 await this.loadConsultations();

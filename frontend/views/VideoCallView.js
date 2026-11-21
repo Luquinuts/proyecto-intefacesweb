@@ -1,5 +1,23 @@
 import { apiUrl } from '../config.js';
 
+async function requestJson(url, fallbackMessage) {
+    try {
+        const response = await fetch(url);
+        let result = {};
+        try {
+            result = await response.json();
+        } catch (error) {
+            result = {};
+        }
+        if (!response.ok) {
+            return { correcto: false, mensaje: result.mensaje || fallbackMessage };
+        }
+        return result;
+    } catch (error) {
+        return { correcto: false, mensaje: fallbackMessage };
+    }
+}
+
 export default {
     data() {
         return {
@@ -12,8 +30,7 @@ export default {
     },
     methods: {
         async loadMeetings() {
-            const response = await fetch(apiUrl('api/videocall.php'));
-            const result = await response.json();
+            const result = await requestJson(apiUrl('api/videocall.php'), 'No se pudieron cargar las videollamadas.');
             if (result.correcto) {
                 this.meetings = result.meetings || [];
             } else {

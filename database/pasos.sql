@@ -13,14 +13,21 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS consultations (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id INT UNSIGNED NOT NULL,
+    professional_id INT UNSIGNED NULL,
     description TEXT NOT NULL,
     contact_preference VARCHAR(40) NOT NULL,
     status ENUM('received', 'under_review', 'scheduled', 'closed') NOT NULL DEFAULT 'received',
     professional_note TEXT NULL,
     requested_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    scheduled_at DATETIME NULL,
+    meeting_link VARCHAR(2048) NULL,
+    google_event_id VARCHAR(190) NULL,
     CONSTRAINT fk_consultations_user
         FOREIGN KEY (user_id) REFERENCES users(id)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_consultations_professional
+        FOREIGN KEY (professional_id) REFERENCES users(id)
+        ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS google_oauth_tokens (
