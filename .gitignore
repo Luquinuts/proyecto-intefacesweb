@@ -1,5 +1,6 @@
 backend/config/google.local.php
 node_modules/
 frontend/dist/
+frontend/.env.local
 .DS_Store
 Thumbs.db
