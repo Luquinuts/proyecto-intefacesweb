@@ -37,6 +37,7 @@ if ($isItem && !in_array($method, ['GET', 'PUT'], true)) {
 }
 
 require_once __DIR__ . '/../config/conexion.php';
+require_once __DIR__ . '/../lib/GoogleCalendarMeet.php';
 $userId = (int) $_SESSION['usuario_id'];
 $role = $_SESSION['rol'] ?? 'user';
 $canReview = in_array($role, ['administrator', 'professional'], true);
@@ -154,10 +155,10 @@ $status = isset($datos['status']) && in_array($datos['status'], ['received', 'un
 $scheduledAt = isset($datos['scheduled_at']) && $datos['scheduled_at'] !== '' ? trim((string) $datos['scheduled_at']) : null;
 $meetingLink = isset($datos['meeting_link']) && $datos['meeting_link'] !== '' ? trim((string) $datos['meeting_link']) : null;
 
-$check = $conexion->prepare('SELECT professional_id, contact_preference, user_id, status, scheduled_at FROM consultations WHERE id = ? LIMIT 1');
+$check = $conexion->prepare('SELECT professional_id, contact_preference, user_id, status, scheduled_at, description FROM consultations WHERE id = ? LIMIT 1');
 $check->bind_param('i', $id);
 $check->execute();
-$check->bind_result($profIdCheck, $contactPrefCheck, $ownerIdCheck, $currentStatus, $currentScheduledAt);
+$check->bind_result($profIdCheck, $contactPrefCheck, $ownerIdCheck, $currentStatus, $currentScheduledAt, $consultationDescription);
 $foundCheck = $check->fetch();
 $check->close();
 if (!$foundCheck) {
@@ -179,17 +180,62 @@ if ($note !== null || array_key_exists('professional_note', $datos)) {
     $allowed = true;
 }
 if ($scheduledAt !== null && in_array($contactPrefCheck, ['phone', 'video'], true) && $role === 'professional') {
+    $normalizedStart = str_replace('T', ' ', $scheduledAt);
+    $startTimestamp = strtotime($normalizedStart);
+    if ($startTimestamp === false) {
+        respond(['correcto' => false, 'mensaje' => 'Fecha/hora inválida.'], 400);
+    }
+    $startIso = date('Y-m-d\TH:i:s', $startTimestamp);
+    $endIso = date('Y-m-d\TH:i:s', $startTimestamp + 30 * 60);
+    $eventSummary = 'Consulta PASOS #' . $id;
+    $eventDescription = 'Consulta: ' . ($consultationDescription ?? '');
+    $withMeet = $contactPrefCheck === 'video';
+
+    $eventResult = google_create_calendar_event($conexion, $userId, [
+        'summary' => $eventSummary,
+        'description' => $eventDescription,
+        'start' => $startIso,
+        'end' => $endIso,
+        'timeZone' => 'America/Argentina/Buenos_Aires',
+    ], $withMeet);
+
+    if (!$eventResult['ok']) {
+        respond(['correcto' => false, 'mensaje' => $eventResult['error'] ?? 'No se pudo crear el evento en Google Calendar.'], 502);
+    }
+
     $sql .= 'scheduled_at = ?, status = ?, ';
     $types .= 'ss';
-    $vals[] = str_replace('T', ' ', $scheduledAt);
+    $vals[] = date('Y-m-d H:i:s', $startTimestamp);
     $vals[] = 'scheduled';
     $allowed = true;
-}
-if ($meetingLink !== null && $contactPrefCheck === 'video' && $role === 'professional') {
-    $sql .= 'meeting_link = ?, ';
-    $types .= 's';
-    $vals[] = $meetingLink;
-    $allowed = true;
+
+    $hasEventColResult = $conexion->query("SHOW COLUMNS FROM consultations LIKE 'google_event_id'");
+    $hasEventCol = $hasEventColResult && $hasEventColResult->num_rows > 0;
+    if ($hasEventColResult) {
+        $hasEventColResult->free();
+    }
+    if ($hasEventCol && !empty($eventResult['event_id'])) {
+        $sql .= 'google_event_id = ?, ';
+        $types .= 's';
+        $vals[] = $eventResult['event_id'];
+        $allowed = true;
+    }
+
+    if ($withMeet) {
+        $generatedMeetLink = $eventResult['meet_link'] ?? null;
+        if (!$generatedMeetLink) {
+            respond(['correcto' => false, 'mensaje' => 'Google Calendar creó el evento pero no devolvió un enlace de Google Meet.'], 502);
+        }
+        $sql .= 'meeting_link = ?, ';
+        $types .= 's';
+        $vals[] = $generatedMeetLink;
+        $allowed = true;
+    } else {
+        $sql .= 'meeting_link = ?, ';
+        $types .= 's';
+        $vals[] = null;
+        $allowed = true;
+    }
 }
 if ($status !== null && $role === 'professional') {
     if (in_array($contactPrefCheck, ['phone', 'video'], true)) {

@@ -17,10 +17,16 @@ export default {
             selectedDate: '',
             scheduleTime: '',
             timeSlots: ['09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00'],
+            googleConnected: false,
+            googleEmail: '',
+            googleConfigured: true,
+            googleStatusMessage: '',
         };
     },
     mounted() {
         this.loadConsultations();
+        this.loadGoogleStatus();
+        this.handleGoogleCallback();
         this.submitHandler = (event) => this.submitConsultation(event);
         $('#consultation-form').on('submit', this.submitHandler);
     },
@@ -61,6 +67,40 @@ export default {
                     window.location.hash = '';
                     window.location.reload();
                 });
+        },
+        async loadGoogleStatus() {
+            if (this.role !== 'professional') return;
+            try {
+                const response = await fetch('../backend/api/google_status.php');
+                const result = await response.json();
+                if (result.correcto) {
+                    this.googleConnected = !!result.connected;
+                    this.googleEmail = result.google_email || '';
+                    this.googleConfigured = result.configured !== false;
+                }
+            } catch (e) {
+                this.googleConnected = false;
+            }
+        },
+        handleGoogleCallback() {
+            const hash = window.location.hash || '';
+            const queryIndex = hash.indexOf('?');
+            if (queryIndex === -1) return;
+            const params = new URLSearchParams(hash.substring(queryIndex + 1));
+            const google = params.get('google');
+            if (!google) return;
+            if (google === 'connected') {
+                this.googleStatusMessage = 'Cuenta de Google conectada correctamente.';
+                this.loadGoogleStatus();
+            } else if (google === 'error') {
+                this.googleStatusMessage = 'La conexión con Google fue cancelada o falló.';
+            } else {
+                this.googleStatusMessage = 'No se pudo completar la conexión con Google.';
+            }
+            window.location.hash = '#consultations';
+        },
+        connectGoogle() {
+            window.location.href = '../backend/api/google_auth.php';
         },
         async loadConsultations() {
             const response = await fetch('../backend/api/consultations.php');
@@ -124,17 +164,18 @@ export default {
                 this.message = 'Selecciona fecha y hora.';
                 return;
             }
-            const payload = { scheduled_at: this.scheduleDateTime };
-            if (this.selected.contact_preference === 'video' && this.meetingLink) {
-                payload.meeting_link = this.meetingLink;
+            if (!this.googleConnected) {
+                this.message = 'Conectá tu cuenta de Google antes de agendar.';
+                return;
             }
+            const payload = { scheduled_at: this.scheduleDateTime };
             const response = await fetch(`../backend/api/consultations.php/${this.selected.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
             const result = await response.json();
-            this.message = result.correcto ? 'Cita agendada.' : (result.mensaje || 'No se pudo agendar la cita.');
+            this.message = result.correcto ? 'Cita agendada y sincronizada con Google Calendar.' : (result.mensaje || 'No se pudo agendar la cita.');
             if (result.correcto) {
                 await this.loadConsultations();
                 this.selected = this.consultations.find((consultation) => consultation.id === this.selected.id) || null;
@@ -198,6 +239,18 @@ export default {
                 <span v-if="selected.meeting_link && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Enlace: <a :href="selected.meeting_link" target="_blank">{{ selected.meeting_link }}</a></span><br v-if="selected.meeting_link && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
                 <div v-if="role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video')" class="mt-3">
                     <label class="form-label">Agendar cita con calendario</label>
+                    <div class="mb-2 p-2 border rounded" style="background:#fff;">
+                        <div v-if="googleStatusMessage" class="alert alert-info py-2 mb-2">{{ googleStatusMessage }}</div>
+                        <div v-if="!googleConfigured" class="alert alert-warning py-2 mb-2">
+                            Google no está configurado. Completá <code>backend/config/google.local.php</code> con tus credenciales.
+                        </div>
+                        <div v-if="googleConnected" class="text-success mb-2">
+                            Google Calendar conectado<span v-if="googleEmail">: {{ googleEmail }}</span>.
+                        </div>
+                        <div v-else class="mb-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm" @click="connectGoogle" :disabled="!googleConfigured">Conectar Google Calendar</button>
+                        </div>
+                    </div>
                     <div id="schedule-calendar" class="mb-2"></div>
                     <div v-if="selectedDate" class="mt-3 p-3 border rounded" style="background: #112620; color: #D9D1C7;">
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -208,8 +261,9 @@ export default {
                         </div>
                     </div>
                     <input type="datetime-local" v-model="scheduleDateTime" class="form-control mb-2 mt-2" style="max-width: 280px;">
-                    <input v-if="selected.contact_preference === 'video'" type="url" v-model="meetingLink" class="form-control mb-2" placeholder="Enlace de Google Meet" style="max-width: 320px;">
-                    <button class="btn btn-secondary btn-sm" @click="scheduleConsultation">Agendar</button>
+                    <div v-if="selected.contact_preference === 'video'" class="form-text mb-2">El enlace de Google Meet se generará automáticamente al agendar.</div>
+                    <div v-if="selected.meeting_link" class="mb-2"><strong>Enlace generado:</strong> <a :href="selected.meeting_link" target="_blank">{{ selected.meeting_link }}</a></div>
+                    <button class="btn btn-secondary btn-sm" @click="scheduleConsultation" :disabled="!googleConnected">Agendar</button>
                 </div>
                 <form v-if="(role === 'administrator' || role === 'professional') && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))" id="consultation-update-form" class="mt-3" @submit="updateConsultation">
                     <label class="form-label" for="consultation-status">Estado</label>
