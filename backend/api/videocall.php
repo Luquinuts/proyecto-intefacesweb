@@ -15,8 +15,14 @@ if (empty($_SESSION['autenticado']) || empty($_SESSION['usuario_id'])) {
 }
 
 require_once __DIR__ . '/../config/conexion.php';
+require_once __DIR__ . '/../lib/GoogleCalendarMeet.php';
 $userId = (int) $_SESSION['usuario_id'];
 $role = $_SESSION['rol'] ?? 'user';
+$joinEmail = null;
+if ($role === 'professional') {
+    $tokenRow = google_get_token_row($conexion, $userId);
+    $joinEmail = $tokenRow['google_email'] ?? ($_SESSION['usuario'] ? html_entity_decode((string) $_SESSION['usuario'], ENT_QUOTES, 'UTF-8') : null);
+}
 
 if ($role === 'professional') {
     $statement = $conexion->prepare(
@@ -51,4 +57,4 @@ while ($row = $result->fetch_assoc()) {
 }
 $statement->close();
 
-respond(['correcto' => true, 'meetings' => $meetings], 200);
+respond(['correcto' => true, 'meetings' => $meetings, 'join_email' => $joinEmail], 200);

@@ -23,6 +23,7 @@ export default {
         return {
             meetings: [],
             message: '',
+            joinEmail: '',
         };
     },
     mounted() {
@@ -33,12 +34,25 @@ export default {
             const result = await requestJson(apiUrl('api/videocall.php'), 'No se pudieron cargar las videollamadas.');
             if (result.correcto) {
                 this.meetings = result.meetings || [];
+                this.joinEmail = result.join_email || '';
             } else {
                 this.message = result.mensaje || 'No hay videollamadas disponibles.';
             }
         },
-        openMeeting(link) {
-            if (link) {
+        isMeetingAvailable(meeting) {
+            if (!meeting || !meeting.scheduled_at) return false;
+            const scheduled = new Date(String(meeting.scheduled_at).replace(' ', 'T'));
+            if (Number.isNaN(scheduled.getTime())) return false;
+            return new Date() >= scheduled;
+        },
+        openMeeting(meeting) {
+            if (!this.isMeetingAvailable(meeting)) return;
+            if (meeting && meeting.meeting_link) {
+                let link = meeting.meeting_link;
+                if (this.joinEmail) {
+                    const separator = link.includes('?') ? '&' : '?';
+                    link += `${separator}authuser=${encodeURIComponent(this.joinEmail)}`;
+                }
                 window.open(link, '_blank', 'noopener,noreferrer');
             }
         },
@@ -57,8 +71,9 @@ export default {
                         <strong>Consulta #{{ meeting.id }}</strong><br>
                         <span>Fecha/Hora: {{ meeting.scheduled_at }}</span><br>
                         <span>Estado: {{ meeting.status }}</span>
+                        <div v-if="!isMeetingAvailable(meeting)" class="text-muted small mt-1">El enlace se habilitará en la fecha y hora agendada.</div>
                     </div>
-                    <button class="btn btn-primary" @click="openMeeting(meeting.meeting_link)">Unirse a Google Meet</button>
+                    <button class="btn btn-primary" :disabled="!isMeetingAvailable(meeting)" @click="openMeeting(meeting)">Unirse a Google Meet</button>
                 </div>
             </div>
         </section>

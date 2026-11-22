@@ -32,5 +32,6 @@ $state = bin2hex(random_bytes(16));
 $_SESSION['google_oauth_state'] = $state;
 $_SESSION['google_oauth_user_id'] = (int) $_SESSION['usuario_id'];
 
-header('Location: ' . google_build_auth_url($state));
+$loginHint = isset($_SESSION['usuario']) ? html_entity_decode((string) $_SESSION['usuario'], ENT_QUOTES, 'UTF-8') : null;
+header('Location: ' . google_build_auth_url($state, $loginHint));
 exit;

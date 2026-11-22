@@ -222,6 +222,22 @@ export default {
                 this.selected = this.consultations.find((consultation) => consultation.id === this.selected.id) || null;
             }
         },
+        isMeetingAvailable(consultation) {
+            if (!consultation || !consultation.scheduled_at) return false;
+            const scheduled = new Date(String(consultation.scheduled_at).replace(' ', 'T'));
+            if (Number.isNaN(scheduled.getTime())) return false;
+            return new Date() >= scheduled;
+        },
+        meetingLinkFor(consultation) {
+            if (!consultation || !consultation.meeting_link) return '';
+            let link = consultation.meeting_link;
+            const email = this.googleEmail || '';
+            if (email) {
+                const separator = link.includes('?') ? '&' : '?';
+                link += `${separator}authuser=${encodeURIComponent(email)}`;
+            }
+            return link;
+        },
         getStatusLabel(status) {
             const labels = {
                 received: 'Recibida',
@@ -264,7 +280,11 @@ export default {
                 <span v-if="!(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Preferencia de contacto: {{ getContactLabel(selected.contact_preference) }}</span><br v-if="!(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
                 <span v-if="!(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Estado: {{ getStatusLabel(selected.status) }}</span><br v-if="!(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
                 <span v-if="selected.scheduled_at && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Fecha/hora: {{ selected.scheduled_at }}</span><br v-if="selected.scheduled_at && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
-                <span v-if="selected.meeting_link && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Enlace: <a :href="selected.meeting_link" target="_blank">{{ selected.meeting_link }}</a></span><br v-if="selected.meeting_link && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
+                <span v-if="selected.meeting_link && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
+                    Enlace:
+                    <a v-if="isMeetingAvailable(selected)" :href="meetingLinkFor(selected)" target="_blank" rel="noopener noreferrer">{{ selected.meeting_link }}</a>
+                    <span v-else class="text-muted">Disponible en la fecha y hora agendada</span>
+                </span><br v-if="selected.meeting_link && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
                 <div v-if="role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video')" class="mt-3">
                     <label class="form-label">Agendar cita con calendario</label>
                     <div class="mb-2 p-2 border rounded" style="background:#fff;">
@@ -290,7 +310,11 @@ export default {
                     </div>
                     <input type="datetime-local" v-model="scheduleDateTime" class="form-control mb-2 mt-2" style="max-width: 280px;">
                     <div v-if="selected.contact_preference === 'video'" class="form-text mb-2">El enlace de Google Meet se generará automáticamente al agendar.</div>
-                    <div v-if="selected.meeting_link" class="mb-2"><strong>Enlace generado:</strong> <a :href="selected.meeting_link" target="_blank">{{ selected.meeting_link }}</a></div>
+                    <div v-if="selected.meeting_link" class="mb-2">
+                        <strong>Enlace generado:</strong>
+                        <a v-if="isMeetingAvailable(selected)" :href="meetingLinkFor(selected)" target="_blank" rel="noopener noreferrer">{{ selected.meeting_link }}</a>
+                        <span v-else class="text-muted">Disponible en la fecha y hora agendada</span>
+                    </div>
                     <button class="btn btn-secondary btn-sm" @click="scheduleConsultation" :disabled="!googleConnected || scheduling">{{ scheduling ? 'Consultando…' : (selected.contact_preference === 'video' && selected.scheduled_at && !selected.meeting_link ? 'Comprobar enlace / reagendar' : 'Agendar') }}</button>
                 </div>
                 <form v-if="(role === 'administrator' || role === 'professional') && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))" id="consultation-update-form" class="mt-3" @submit="updateConsultation">

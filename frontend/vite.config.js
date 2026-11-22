@@ -16,7 +16,7 @@ export default defineConfig({
         strictPort: true,
         proxy: {
             '/backend': {
-                target: 'http://localhost/proyecto-intefacesweb-develop',
+                target: 'http://localhost/proyecto-intefacesweb',
             },
         },
     },

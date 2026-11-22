@@ -146,7 +146,7 @@ function google_get_valid_access_token(mysqli $conexion, int $userId): array
     return ['ok' => true, 'access_token' => $refresh['access_token'], 'row' => $row];
 }
 
-function google_build_auth_url(string $state): string
+function google_build_auth_url(string $state, ?string $loginHint = null): string
 {
     $config = pasos_google_config();
     $params = [
@@ -159,6 +159,9 @@ function google_build_auth_url(string $state): string
         'include_granted_scopes' => 'true',
         'state' => $state,
     ];
+    if ($loginHint !== null && $loginHint !== '') {
+        $params['login_hint'] = $loginHint;
+    }
     return $config['auth_uri'] . '?' . http_build_query($params);
 }
 
