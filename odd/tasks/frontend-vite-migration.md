@@ -75,3 +75,9 @@ Make the PASOS frontend runnable with `npm run dev` and align it with the Vue, B
 - The runtime mismatch was verified against the local `pasos.consultations` table: `google_event_id` existed, while `professional_id`, `scheduled_at`, and `meeting_link` were absent.
 - No deterministic RED test exists for this runtime schema mismatch; syntax checks, the frontend build, and local MariaDB migration verification are the applicable checks.
 - Work-unit commit: `ea7f067` (`developer: fix(api): repair consultation schema errors`).
+
+## Follow-up: PASOS session role restoration
+
+- Authorized scope: `frontend/app.js`, `backend/sesion_actual.php`, and this task document only.
+- The frontend now restores the PHP session role on startup; protected hashes no longer authenticate the app by themselves.
+- Verification: `git diff --check`, JavaScript/PHP syntax checks, frontend build, and an Apache curl check without a session are required. No deterministic RED test exists for browser session restoration.
