@@ -41,7 +41,7 @@ export default {
                 role.value = sessionResult.rol || 'user';
                 authenticated.value = true;
                 activeView.value = window.location.hash === '#videocall' ? 'videocall' : 'consultations';
-                if (window.location.hash !== '#videocall') window.location.hash = '#consultations';
+                if (window.location.hash !== '#videocall' && !window.location.hash.startsWith('#consultations?google=')) window.location.hash = '#consultations';
             } catch (error) {
                 if (!authenticated.value && window.location.hash) window.location.hash = '';
             }

@@ -155,10 +155,11 @@ $status = isset($datos['status']) && in_array($datos['status'], ['received', 'un
 $scheduledAt = isset($datos['scheduled_at']) && $datos['scheduled_at'] !== '' ? trim((string) $datos['scheduled_at']) : null;
 $meetingLink = isset($datos['meeting_link']) && $datos['meeting_link'] !== '' ? trim((string) $datos['meeting_link']) : null;
 
-$check = $conexion->prepare('SELECT professional_id, contact_preference, user_id, status, scheduled_at, description FROM consultations WHERE id = ? LIMIT 1');
+$conferenceStatus = null;
+$check = $conexion->prepare('SELECT professional_id, contact_preference, user_id, status, scheduled_at, description, google_event_id FROM consultations WHERE id = ? LIMIT 1');
 $check->bind_param('i', $id);
 $check->execute();
-$check->bind_result($profIdCheck, $contactPrefCheck, $ownerIdCheck, $currentStatus, $currentScheduledAt, $consultationDescription);
+$check->bind_result($profIdCheck, $contactPrefCheck, $ownerIdCheck, $currentStatus, $currentScheduledAt, $consultationDescription, $currentEventId);
 $foundCheck = $check->fetch();
 $check->close();
 if (!$foundCheck) {
@@ -192,6 +193,8 @@ if ($scheduledAt !== null && in_array($contactPrefCheck, ['phone', 'video'], tru
     $withMeet = $contactPrefCheck === 'video';
 
     $eventResult = google_create_calendar_event($conexion, $userId, [
+        'consultation_id' => $id,
+        'event_id' => $currentEventId ?: null,
         'summary' => $eventSummary,
         'description' => $eventDescription,
         'start' => $startIso,
@@ -202,6 +205,7 @@ if ($scheduledAt !== null && in_array($contactPrefCheck, ['phone', 'video'], tru
     if (!$eventResult['ok']) {
         respond(['correcto' => false, 'mensaje' => $eventResult['error'] ?? 'No se pudo crear el evento en Google Calendar.'], 502);
     }
+    $conferenceStatus = $eventResult['conference_status'];
 
     $sql .= 'scheduled_at = ?, status = ?, ';
     $types .= 'ss';
@@ -209,27 +213,17 @@ if ($scheduledAt !== null && in_array($contactPrefCheck, ['phone', 'video'], tru
     $vals[] = 'scheduled';
     $allowed = true;
 
-    $hasEventColResult = $conexion->query("SHOW COLUMNS FROM consultations LIKE 'google_event_id'");
-    $hasEventCol = $hasEventColResult && $hasEventColResult->num_rows > 0;
-    if ($hasEventColResult) {
-        $hasEventColResult->free();
-    }
-    if ($hasEventCol && !empty($eventResult['event_id'])) {
-        $sql .= 'google_event_id = ?, ';
-        $types .= 's';
-        $vals[] = $eventResult['event_id'];
-        $allowed = true;
-    }
+    $sql .= 'google_event_id = ?, ';
+    $types .= 's';
+    $vals[] = $eventResult['event_id'];
 
     if ($withMeet) {
         $generatedMeetLink = $eventResult['meet_link'] ?? null;
-        if (!$generatedMeetLink) {
-            respond(['correcto' => false, 'mensaje' => 'Google Calendar creó el evento pero no devolvió un enlace de Google Meet.'], 502);
+        if ($generatedMeetLink) {
+            $sql .= 'meeting_link = ?, ';
+            $types .= 's';
+            $vals[] = $generatedMeetLink;
         }
-        $sql .= 'meeting_link = ?, ';
-        $types .= 's';
-        $vals[] = $generatedMeetLink;
-        $allowed = true;
     } else {
         $sql .= 'meeting_link = ?, ';
         $types .= 's';
@@ -262,11 +256,13 @@ if (!$allowed) {
 $sql = rtrim($sql, ', ') . ' WHERE id = ?';
 $types .= 'i';
 $vals[] = $id;
-$stmt = $conexion->prepare($sql);
-$stmt->bind_param($types, ...$vals);
-if (!$stmt->execute()) {
+try {
+    $stmt = $conexion->prepare($sql);
+    if (!$stmt || !$stmt->bind_param($types, ...$vals) || !$stmt->execute()) {
+        throw new RuntimeException('Consultation save failed.');
+    }
     $stmt->close();
-    respond(['correcto' => false, 'mensaje' => 'Could not update consultation.'], 500);
+} catch (Throwable $error) {
+    respond(['correcto' => false, 'mensaje' => 'No se pudo guardar la consulta. Reintenta con la misma fecha: se reutilizará el evento de Google.'], 500);
 }
-$stmt->close();
-respond(['correcto' => true, 'id' => $id], 200);
+respond(['correcto' => true, 'id' => $id, 'conference_status' => $conferenceStatus], 200);

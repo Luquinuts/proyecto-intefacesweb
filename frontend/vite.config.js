@@ -12,6 +12,8 @@ export default defineConfig({
         __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
     },
     server: {
+        port: 5174,
+        strictPort: true,
         proxy: {
             '/backend': {
                 target: 'http://localhost/proyecto-intefacesweb-develop',

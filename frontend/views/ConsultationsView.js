@@ -45,6 +45,7 @@ export default {
             googleEmail: '',
             googleConfigured: true,
             googleStatusMessage: '',
+            scheduling: false,
         };
     },
     mounted() {
@@ -180,6 +181,7 @@ export default {
             }
         },
         async scheduleConsultation() {
+            if (this.scheduling) return;
             if (!this.scheduleDateTime) {
                 this.message = 'Selecciona fecha y hora.';
                 return;
@@ -189,15 +191,23 @@ export default {
                 return;
             }
             const payload = { scheduled_at: this.scheduleDateTime };
-            const result = await requestJson(apiUrl(`api/consultations.php/${this.selected.id}`), {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            }, 'No se pudo agendar la cita.');
-            this.message = result.correcto ? 'Cita agendada y sincronizada con Google Calendar.' : (result.mensaje || 'No se pudo agendar la cita.');
-            if (result.correcto) {
-                await this.loadConsultations();
-                this.selected = this.consultations.find((consultation) => consultation.id === this.selected.id) || null;
+            const selectedId = this.selected.id;
+            this.scheduling = true;
+            try {
+                const result = await requestJson(apiUrl(`api/consultations.php/${selectedId}`), {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                }, 'No se pudo agendar la cita. Reintenta con la misma fecha para comprobar el evento.');
+                this.message = result.correcto ? 'Cita agendada y sincronizada con Google Calendar.' : (result.mensaje || 'No se pudo agendar la cita.');
+                if (result.correcto && result.conference_status === 'pending') this.message = 'Cita guardada. Google está preparando el enlace; usa Comprobar enlace para volver a consultar.';
+                if (result.correcto && result.conference_status === 'failure') this.message = 'Cita guardada, pero Google no pudo generar la conferencia. Revisa el evento en Calendar; no se creará otro evento al comprobar.';
+                if (result.correcto) {
+                    await this.loadConsultations();
+                    if (this.selected?.id === selectedId) this.selected = this.consultations.find((consultation) => consultation.id === selectedId) || null;
+                }
+            } finally {
+                this.scheduling = false;
             }
         },
         async markClosed() {
@@ -281,7 +291,7 @@ export default {
                     <input type="datetime-local" v-model="scheduleDateTime" class="form-control mb-2 mt-2" style="max-width: 280px;">
                     <div v-if="selected.contact_preference === 'video'" class="form-text mb-2">El enlace de Google Meet se generará automáticamente al agendar.</div>
                     <div v-if="selected.meeting_link" class="mb-2"><strong>Enlace generado:</strong> <a :href="selected.meeting_link" target="_blank">{{ selected.meeting_link }}</a></div>
-                    <button class="btn btn-secondary btn-sm" @click="scheduleConsultation" :disabled="!googleConnected">Agendar</button>
+                    <button class="btn btn-secondary btn-sm" @click="scheduleConsultation" :disabled="!googleConnected || scheduling">{{ scheduling ? 'Consultando…' : (selected.contact_preference === 'video' && selected.scheduled_at && !selected.meeting_link ? 'Comprobar enlace / reagendar' : 'Agendar') }}</button>
                 </div>
                 <form v-if="(role === 'administrator' || role === 'professional') && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))" id="consultation-update-form" class="mt-3" @submit="updateConsultation">
                     <label class="form-label" for="consultation-status">Estado</label>
@@ -300,6 +310,7 @@ export default {
                     <button class="btn btn-secondary btn-sm" @click="markClosed">Marcar como cerrada</button>
                 </div>
             </article>
+            <p v-if="role === 'professional' && message" class="alert alert-info mt-3" role="status">{{ message }}</p>
         </section>
     `,
 };

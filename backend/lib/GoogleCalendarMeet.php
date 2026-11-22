@@ -1,6 +1,5 @@
 <?php
 
-require_once __DIR__ . '/../config/conexion.php';
 require_once __DIR__ . '/../config/google.php';
 
 function google_http_json(string $method, string $url, ?array $body = null, array $headers = [], array $query = []): array
@@ -94,8 +93,7 @@ function google_refresh_access_token(mysqli $conexion, int $userId): array
         return ['ok' => false, 'error' => 'No hay refresh token de Google. El abogado debe volver a conectar su cuenta.'];
     }
 
-    $response = google_http_json('POST', $config['token_uri'], null, [], []);
-    // Token endpoint expects form-encoded; handle separately below.
+    // The token endpoint expects form-encoded data.
     $ch = curl_init($config['token_uri']);
     $payload = http_build_query([
         'client_id' => $config['client_id'],
@@ -215,9 +213,22 @@ function google_create_calendar_event(mysqli $conexion, int $userId, array $even
         return $token;
     }
 
-    $config = pasos_google_config();
     $row = $token['row'] ?? google_get_token_row($conexion, $userId);
     $calendarId = $row['calendar_id'] ?? 'primary';
+    return google_sync_calendar_event($token['access_token'], $calendarId, $userId, $eventData, $withMeet);
+}
+
+function google_sync_calendar_event(string $accessToken, string $calendarId, int $userId, array $eventData, bool $withMeet, ?callable $request = null): array
+{
+    $request = $request ?? 'google_http_json';
+    $config = pasos_google_config();
+    // Stable identity survives uncertain inserts and a failed local database save.
+    $eventId = $eventData['event_id'] ?? hash('sha256', $config['client_id'] . ':' . $userId . ':' . $eventData['consultation_id']);
+    $url = $config['calendar_api_base'] . '/calendars/' . rawurlencode($calendarId) . '/events';
+    $eventUrl = $url . '/' . rawurlencode($eventId);
+    $headers = ['Authorization: Bearer ' . $accessToken];
+    $query = ['conferenceDataVersion' => 1];
+    $response = $request('GET', $eventUrl, null, $headers, $query);
 
     $body = [
         'summary' => $eventData['summary'] ?? 'Consulta PASOS',
@@ -232,24 +243,30 @@ function google_create_calendar_event(mysqli $conexion, int $userId, array $even
         ],
     ];
 
-    $query = [];
-    if ($withMeet) {
-        $body['conferenceData'] = [
-            'createRequest' => [
-                'requestId' => 'pasos-' . uniqid('', true),
+    if (!$response['ok'] && $response['status'] === 404 && empty($eventData['event_id'])) {
+        $body['id'] = $eventId;
+        if ($withMeet) {
+            $body['conferenceData'] = ['createRequest' => [
+                'requestId' => $eventId,
                 'conferenceSolutionKey' => ['type' => 'hangoutsMeet'],
-            ],
-        ];
-        $query['conferenceDataVersion'] = 1;
+            ]];
+        }
+        $response = $request('POST', $url, $body, $headers, $query);
+        if ($response['status'] === 409) {
+            $response = $request('GET', $eventUrl, null, $headers, $query);
+        }
+    }
+    if ($response['ok'] && ($response['data']['status'] ?? '') === 'cancelled') {
+        return ['ok' => false, 'error' => 'El evento de Google fue cancelado. No se creó otro evento.'];
+    }
+    if ($response['ok'] && (substr($response['data']['start']['dateTime'] ?? '', 0, 19) !== $eventData['start']
+        || substr($response['data']['end']['dateTime'] ?? '', 0, 19) !== $eventData['end'])) {
+        unset($body['id'], $body['conferenceData']);
+        $response = $request('PATCH', $eventUrl, $body, $headers, $query);
     }
 
-    $url = $config['calendar_api_base'] . '/calendars/' . rawurlencode($calendarId) . '/events';
-    $response = google_http_json('POST', $url, $body, [
-        'Authorization: Bearer ' . $token['access_token'],
-    ], $query);
-
     if (!$response['ok']) {
-        $msg = $response['data']['error']['message'] ?? $response['error'] ?? 'No se pudo crear el evento en Google Calendar.';
+        $msg = $response['data']['error']['message'] ?? $response['error'] ?? 'No se pudo consultar o actualizar el evento en Google Calendar.';
         return ['ok' => false, 'error' => $msg, 'data' => $response['data']];
     }
 
@@ -266,10 +283,15 @@ function google_create_calendar_event(mysqli $conexion, int $userId, array $even
     if ($meetLink === null && !empty($data['hangoutLink'])) {
         $meetLink = $data['hangoutLink'];
     }
+    $conferenceStatus = $withMeet ? ($meetLink ? 'success' : 'pending') : 'not_requested';
+    if ($withMeet && ($data['conferenceData']['createRequest']['status']['statusCode'] ?? '') === 'failure') {
+        $conferenceStatus = 'failure';
+    }
 
     return [
         'ok' => true,
-        'event_id' => $data['id'] ?? null,
+        'event_id' => $data['id'] ?? $eventId,
+        'conference_status' => $conferenceStatus,
         'html_link' => $data['htmlLink'] ?? null,
         'meet_link' => $meetLink,
         'data' => $data,

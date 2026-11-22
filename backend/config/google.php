@@ -13,12 +13,13 @@ function pasos_google_config(): array
 
     $clientId = getenv('GOOGLE_CLIENT_ID') ?: ($local['client_id'] ?? '');
     $clientSecret = getenv('GOOGLE_CLIENT_SECRET') ?: ($local['client_secret'] ?? '');
-    $redirectUri = getenv('GOOGLE_REDIRECT_URI') ?: ($local['redirect_uri'] ?? 'http://localhost/proyecto-intefacesweb/backend/api/google_callback.php');
+    $redirectUri = getenv('GOOGLE_REDIRECT_URI') ?: ($local['redirect_uri'] ?? 'http://localhost/proyecto-intefacesweb-develop/backend/api/google_callback.php');
 
     return [
         'client_id' => $clientId,
         'client_secret' => $clientSecret,
         'redirect_uri' => $redirectUri,
+        'frontend_url' => getenv('PASOS_FRONTEND_URL') ?: ($local['frontend_url'] ?? 'http://localhost:5174/'),
         'auth_uri' => 'https://accounts.google.com/o/oauth2/v2/auth',
         'token_uri' => 'https://oauth2.googleapis.com/token',
         'calendar_api_base' => 'https://www.googleapis.com/calendar/v3',

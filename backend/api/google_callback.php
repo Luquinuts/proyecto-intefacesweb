@@ -7,7 +7,7 @@ require_once __DIR__ . '/../lib/GoogleCalendarMeet.php';
 
 function redirect_frontend(string $params): void
 {
-    $frontendUrl = getenv('PASOS_FRONTEND_URL') ?: 'http://localhost/proyecto-intefacesweb/frontend/index.html';
+    $frontendUrl = pasos_google_config()['frontend_url'];
     $location = rtrim($frontendUrl, '/') . '#consultations' . $params;
     header('Location: ' . $location);
     exit;
