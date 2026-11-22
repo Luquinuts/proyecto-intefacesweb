@@ -1,95 +1,39 @@
-# Configuración de Google Calendar y Google Meet
+# Run the private PASOS classroom delivery
 
-Esta guía configura la integración OAuth 2.0 usada por PASOS para crear eventos en Google Calendar y enlaces de Google Meet.
+The private ZIP includes application OAuth configuration, not a signed-in Google account. Keep its root folder named `proyecto-intefacesweb-develop` so the registered callback and Vite proxy continue to match.
 
-## 1. Crear proyecto en Google Cloud
+## Start locally
 
-1. Entra en [Google Cloud Console](https://console.cloud.google.com/).
-2. Crea un proyecto nuevo (por ejemplo, `pasos-integracion`).
-3. Selecciona el proyecto.
+1. Extract `proyecto-intefacesweb-develop/` under XAMPP's `htdocs`. Start **Apache** and **MySQL** in XAMPP.
+2. Open phpMyAdmin and import `database/pasos.sql` from the extracted folder into a fresh classroom database. It creates the `pasos` schema and demo role records, not account passwords or Google authorization. Do not import over a working database without a backup. The optional `database/google_calendar_migration.sql` is only for an older existing PASOS schema.
+3. Install Node.js 22.12+ with npm. In the extracted project's terminal:
 
-## 2. Habilitar APIs
-
-En **APIs y servicios > Biblioteca**, habilita:
-
-- **Google Calendar API**
-- **Google Meet REST API**
-
-## 3. Configurar pantalla de consentimiento OAuth
-
-1. Ve a **APIs y servicios > Pantalla de consentimiento de OAuth**.
-2. Elige **Externo** (para pruebas) o el tipo que corresponda.
-3. Completa nombre de app, correo de soporte y correo de desarrollador.
-4. En **Usuarios de prueba**, agrega la cuenta de Google del abogado que usará la app.
-5. Guarda los cambios.
-
-## 4. Crear credenciales OAuth 2.0
-
-1. Ve a **APIs y servicios > Credenciales**.
-2. Crea **ID de cliente de OAuth**.
-3. Tipo de aplicación: **Aplicación web**.
-4. Agrega este URI de redirección autorizado:
-
-   ```text
-   http://localhost/proyecto-intefacesweb/backend/api/google_callback.php
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
    ```
 
-5. Guarda y copia el **Client ID** y **Client Secret**.
+4. Open `http://localhost:5174/`. Keep that hostname and port throughout login. Vite's strict port setting intentionally refuses a busy port instead of selecting another one.
 
-## 5. Configurar credenciales en PASOS
+Standard local XAMPP database defaults are configured in `backend/config/conexion.php`. Custom installations can set `PASOS_DB_HOST`, `PASOS_DB_USER`, `PASOS_DB_PASSWORD`, `PASOS_DB_NAME`, and `PASOS_DB_PORT` in Apache's environment. PHP needs mysqli and cURL for the database and Google requests. No manual permission command or elevated shell is expected after a standard XAMPP unzip; custom installations may require administrator assistance.
 
-1. Copia el archivo de ejemplo:
+## Connect and verify Google manually
 
-   ```text
-   backend/config/google.local.php.example
-   ```
+1. Obtain the classroom Firebase user and professional account credentials separately. The seeded professional record in `database/pasos.sql` must match an account available in the configured Firebase project; login links its placeholder UID. Submit a phone or video consultation as a user, then sign in as the assigned professional.
+2. Open the consultation and choose **Conectar Google Calendar**. The Cloud owner must enable Calendar API and Meet REST API and allow the connecting Google account as an OAuth test user while the application is in testing mode.
+3. Accept Google's consent screen in the browser. The registered redirect is exactly `http://localhost/proyecto-intefacesweb-develop/backend/api/google_callback.php`, not a Vite URL. The backend then returns to `http://localhost:5174/` and displays connection feedback. The private bundle already includes `backend/config/google.local.php`; do not replace it with the example file. A Git-only checkout requires configuring that ignored local file separately.
+4. Schedule a video consultation. Confirm one event appears in the professional's primary Google Calendar and its Meet link appears in PASOS. If the conference is pending, the appointment is saved: use **Comprobar enlace / reagendar** with the same time to check that event. A failed conference is reported without creating another event; inspect it in Calendar rather than repeatedly expecting a new conference.
+5. Change the appointment time and confirm the same event moves without duplication. A phone consultation creates a Calendar event without requesting Meet. These are manual acceptance checks, not results already demonstrated by the ZIP.
 
-   a:
+Authorization in Google OAuth testing mode can expire, including refresh authorization; reconnect when necessary. Wrong callback, denied consent, missing test-user access, unavailable APIs, Firebase account access, or custom database settings can prevent setup. Do not change the callback to work around an occupied frontend port.
 
-   ```text
-   backend/config/google.local.php
-   ```
+## Keep the delivery private
 
-2. Completa las credenciales:
+- `backend/config/google.local.php` intentionally contains the application client configuration. It is ignored in Git but deliberately included once in this private ZIP; downloaded Cloud JSON and signed-in user tokens are not included.
+- The ZIP itself is owner-only on the preparing machine. Its PHP entries have ordinary read permissions for XAMPP/Apache portability; local ACLs do not travel with ZIP files. Never serve backend source with a static server, Vite preview, or a misconfigured PHP server. Apache must execute PHP rather than expose its source.
+- Do not upload the ZIP to Git, a public share, or a public web root. Share only with the intended teacher and delete sensitive archive/extracted copies when no longer needed. Never distribute live database exports containing OAuth tokens, passwords, cookies, or sessions.
 
-   ```php
-   <?php
-   return [
-       'client_id' => 'TU_CLIENT_ID.apps.googleusercontent.com',
-       'client_secret' => 'TU_CLIENT_SECRET',
-       'redirect_uri' => 'http://localhost/proyecto-intefacesweb/backend/api/google_callback.php',
-   ];
-   ```
+## Verification boundary
 
-3. No subas `google.local.php` al repositorio.
-
-## 6. Ejecutar migración de base de datos
-
-Con MySQL/MariaDB iniciado, ejecuta:
-
-```sql
-SOURCE C:/xampp/htdocs/proyecto-intefacesweb/database/google_calendar_migration.sql;
-```
-
-O ejecuta el contenido del archivo en phpMyAdmin.
-
-## 7. Conectar la cuenta del abogado
-
-1. Inicia sesión como abogado.
-2. Abre una consulta de teléfono o videollamada.
-3. Pulsa **Conectar Google Calendar**.
-4. Acepta los permisos de Google.
-5. Al volver, la app mostrará la cuenta conectada.
-
-## 8. Comportamiento esperado
-
-- **Videollamada**: al agendar, se crea evento en Google Calendar y se genera enlace de Google Meet automáticamente.
-- **Teléfono**: al agendar, se crea evento en Google Calendar sin enlace de Meet.
-- El enlace de Meet se muestra en la consulta y en la pestaña **Videollamada Google Meet**.
-
-## Notas
-
-- La integración usa OAuth 2.0 con consentimiento del abogado.
-- Los eventos se crean en el calendario principal (`primary`) de la cuenta Google conectada.
-- Si el token expira, el backend intenta refrescarlo automáticamente con el `refresh_token`.
-- Si ves errores de permisos, revisa que Calendar API y Meet REST API estén habilitadas y que la cuenta esté en usuarios de prueba mientras la app esté en modo prueba.
+Offline tests cover pending/success, stable retries, rescheduling with timezone-aware instant comparison, conflicts, failures, and phone events. Run `php -d zend.assertions=1 -d assert.exception=1 tests/google-calendar-meet.php` from the project root. Local syntax/build and unauthenticated JSON checks do not prove browser consent, authenticated MySQL persistence, or a real Google meeting; those remain manual and installation-specific.

@@ -259,10 +259,20 @@ function google_sync_calendar_event(string $accessToken, string $calendarId, int
     if ($response['ok'] && ($response['data']['status'] ?? '') === 'cancelled') {
         return ['ok' => false, 'error' => 'El evento de Google fue cancelado. No se creó otro evento.'];
     }
-    if ($response['ok'] && (substr($response['data']['start']['dateTime'] ?? '', 0, 19) !== $eventData['start']
-        || substr($response['data']['end']['dateTime'] ?? '', 0, 19) !== $eventData['end'])) {
-        unset($body['id'], $body['conferenceData']);
-        $response = $request('PATCH', $eventUrl, $body, $headers, $query);
+    if ($response['ok']) {
+        $requestedZone = new DateTimeZone($body['start']['timeZone']);
+        $timeChanged = false;
+        foreach (['start', 'end'] as $boundary) {
+            $existing = $response['data'][$boundary];
+            if (empty($existing['dateTime']) || new DateTimeImmutable($existing['dateTime'], new DateTimeZone($existing['timeZone'] ?? $requestedZone->getName()))
+                != new DateTimeImmutable($eventData[$boundary], $requestedZone)) {
+                $timeChanged = true;
+            }
+        }
+        if ($timeChanged) {
+            unset($body['id'], $body['conferenceData']);
+            $response = $request('PATCH', $eventUrl, $body, $headers, $query);
+        }
     }
 
     if (!$response['ok']) {

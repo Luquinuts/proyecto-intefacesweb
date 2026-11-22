@@ -12,7 +12,7 @@ The repository will contain the course project proposal and, after scope confirm
 - Back end: PHP, MySQL, Firebase Authentication, REST, jQuery, HTML5, CSS, and Bootstrap.
 - Database access: PHP `mysqli` and explicit SQL queries.
 
-## Current documents
+## Repository planning documents (not included in the private runtime ZIP)
 
 - [`docs/Proyecto_PASOS.md`](docs/Proyecto_PASOS.md): strategic product concept and service boundaries.
 - [`docs/propuesta.md`](docs/propuesta.md): proposed academic scope, user flow, data model, endpoints, and evidence plan.
@@ -28,7 +28,7 @@ The repository will contain the course project proposal and, after scope confirm
 
 ## Local development
 
-The PHP backend must be served by XAMPP. To run the Vue frontend with Vite:
+For the private classroom ZIP, follow [Google Calendar/Meet setup](docs/google-calendar-meet-setup.md). Extract its `proyecto-intefacesweb-develop/` folder under XAMPP's `htdocs`, start Apache/MySQL, and import `database/pasos.sql` through phpMyAdmin. Use Node.js 22.12+ and npm. From the extracted project:
 
 ```bash
 cd frontend
@@ -36,6 +36,8 @@ npm install
 npm run dev
 ```
 
-The default Vite proxy expects the XAMPP project at `http://localhost/proyecto-intefacesweb-develop` and forwards `/backend` without changing that path. Copy `frontend/.env.example` to `frontend/.env.local` and set `VITE_API_BASE_URL` to a full API URL only when a deployment needs to bypass the proxy. For Google OAuth while using Vite, set the non-secret backend environment value `PASOS_FRONTEND_URL=http://127.0.0.1:5173/`; otherwise the callback falls back to the XAMPP frontend path. Keep Google credentials in `backend/config/google.local.php`, which is ignored by Git.
+Open `http://localhost:5174/`. Vite uses strict port 5174 and proxies `/backend` to `http://localhost/proyecto-intefacesweb-develop`. If the port is occupied, stop this project's previous frontend instance; do not switch ports for this delivery. Google returns through the registered Apache callback `http://localhost/proyecto-intefacesweb-develop/backend/api/google_callback.php`, then back to port 5174. `PASOS_FRONTEND_URL` can override the configured frontend return on a custom installation.
+
+The private ZIP intentionally includes ignored `backend/config/google.local.php`; a Git checkout does not. Keep the ZIP private and outside Git/public web roots. Never serve the backend with a static server. Obtain account credentials separately, and delete sensitive archive copies when no longer needed. Browser OAuth and a real meeting still require manual verification; another installation is not guaranteed without testing.
 
 The current MVP is implemented on the `developer` branch. The strategic proposal remains the scope reference, while runtime verification still requires XAMPP, MySQL, Firebase, and Google OAuth configuration.
