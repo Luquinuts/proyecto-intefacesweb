@@ -99,10 +99,36 @@ h1, h2, h3, h4, h5 {
     color: #BF9169;
 }
 
-.btn-outline-secondary:hover,
-.btn-outline-secondary:focus {
+.btn-outline-secondary:hover {
     background: #BF9169;
     color: #0D0D0D;
+}
+
+.btn-outline-secondary:focus {
+    background: transparent;
+    color: #BF9169;
+    box-shadow: 0 0 0 0.25rem rgba(191, 145, 105, 0.25);
+}
+
+.btn-outline-secondary:active,
+.btn-outline-secondary.active {
+    background: #BF9169 !important;
+    border-color: #BF9169 !important;
+    color: #0D0D0D !important;
+}
+
+.btn-tab-selected {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+    font-weight: 700;
+}
+
+.btn-tab-selected:hover,
+.btn-tab-selected:focus {
+    background: #0b5ed7;
+    border-color: #0a58ca;
+    color: #fff;
 }
 
 .table {

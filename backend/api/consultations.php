@@ -116,7 +116,7 @@ if ($method === 'POST') {
     }
     $description = isset($datos['description']) ? trim((string) $datos['description']) : '';
     $contactPreference = isset($datos['contact_preference']) ? trim((string) $datos['contact_preference']) : '';
-    if ($description === '' || strlen($description) > 3000 || !in_array($contactPreference, ['email', 'phone', 'video'], true)) {
+    if ($description === '' || strlen($description) > 3000 || !in_array($contactPreference, ['phone', 'video'], true)) {
         respond(['correcto' => false, 'mensaje' => 'Invalid consultation data.'], 400);
     }
     $profId = null;

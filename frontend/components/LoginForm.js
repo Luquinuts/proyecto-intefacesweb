@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { apiUrl } from '../config.js';
 
@@ -12,7 +12,10 @@ const firebaseConfig = {
     measurementId: 'G-GVX5JXFJHG',
 };
 
-const auth = getAuth(initializeApp(firebaseConfig));
+function getFirebaseAuth() {
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    return getAuth(app);
+}
 
 export default {
     emits: ['authenticated'],
@@ -55,7 +58,7 @@ export default {
                     return;
                 }
 
-                const userCredential = await signInWithEmailAndPassword(auth, this.email, this.password);
+                const userCredential = await signInWithEmailAndPassword(getFirebaseAuth(), this.email, this.password);
                 const user = userCredential.user;
                 const token = await user.getIdToken();
                 const sessionResponse = await fetch(apiUrl('crear_sesion.php'), {

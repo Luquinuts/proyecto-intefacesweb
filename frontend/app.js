@@ -63,14 +63,10 @@ export default {
     template: `
         <div v-if="!authenticated"><login-view @authenticated="showConsultations"></login-view></div>
         <div v-else>
-            <ul class="nav nav-tabs mb-3">
-                <li class="nav-item">
-                    <button class="nav-link" :class="{ active: activeView === 'consultations' }" @click="goToConsultations">Consultas</button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link" :class="{ active: activeView === 'videocall' }" @click="goToVideoCall">Videollamada Google Meet</button>
-                </li>
-            </ul>
+            <div class="d-flex gap-2 mb-3">
+                <button class="btn" :class="activeView === 'consultations' ? 'btn-outline-secondary' : 'btn-primary'" @click="goToConsultations">Consultas</button>
+                <button class="btn" :class="activeView === 'videocall' ? 'btn-outline-secondary' : 'btn-primary'" @click="goToVideoCall">Videollamada Google Meet</button>
+            </div>
             <consultations-view v-if="activeView === 'consultations'" :role="role"></consultations-view>
             <video-call-view v-if="activeView === 'videocall'"></video-call-view>
         </div>
