@@ -75,7 +75,7 @@ export default {
                         <strong>Consulta #{{ meeting.id }}</strong><br>
                         <span>Fecha/Hora: {{ meeting.scheduled_at }}</span><br>
                         <span>Estado: {{ meeting.status }}</span>
-                        <div class="text-muted small mt-1" role="status">{{ meetingLabel(meeting) }}</div>
+                        <div class="small mt-1" :class="meetingLabel(meeting) === 'Videollamada finalizada.' ? 'text-white' : 'text-muted'" role="status">{{ meetingLabel(meeting) }}</div>
                     </div>
                     <button class="btn btn-primary" :disabled="!isMeetingAvailable(meeting)" @click="openMeeting(meeting)">Unirse a Google Meet</button>
                 </div>

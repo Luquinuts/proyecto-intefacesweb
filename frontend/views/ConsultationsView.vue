@@ -309,7 +309,7 @@ export default {
                     <input id="contact-phone" v-model="phone" type="tel" autocomplete="tel" class="form-control" maxlength="40" aria-describedby="phone-help" required>
                     <div id="phone-help" class="form-text">Incluí + y código de país, por ejemplo +54 9 342 1234567. Se guarda una sola vez.</div>
                 </div>
-                <p v-else-if="contactPreference === 'phone'" class="form-text">Usaremos tu teléfono guardado: {{ savedPhone }}</p>
+                <p v-else-if="contactPreference === 'phone'" class="form-text text-white">Usaremos tu teléfono guardado: {{ savedPhone }}</p>
                 <button class="btn btn-primary" :disabled="profileLoading || !!profileError">Enviar consulta</button>
                 <p v-if="message" class="alert alert-info mt-3 mb-0">{{ message }}</p>
             </form>
@@ -322,7 +322,7 @@ export default {
                 <span v-if="selected.scheduled_at && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Fecha/hora: {{ selected.scheduled_at }}</span><br v-if="selected.scheduled_at && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
                 <div v-if="selected.contact_preference === 'video' && selected.scheduled_at" class="my-2">
                     <a v-if="isMeetingAvailable(selected)" class="btn btn-primary btn-sm" :href="meetingLinkFor(selected)" target="_blank" rel="noopener noreferrer">Unirse a Google Meet</a>
-                    <span v-else class="text-muted" role="status">{{ meetingLabel(selected) }}</span>
+                    <span v-else :class="meetingLabel(selected) === 'Videollamada finalizada' ? 'text-white' : 'text-muted'" role="status">{{ meetingLabel(selected) }}</span>
                 </div>
                 <div v-if="role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video')" class="mt-3">
                     <label class="form-label">Agendar cita con calendario</label>
