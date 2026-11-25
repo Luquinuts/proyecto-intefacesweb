@@ -43,6 +43,7 @@ Actual pre-review implementation is 588 authored changed lines. Strategy excepti
 - Manual real Firebase token/revocation, browser and server connectivity/API-key restriction checks remain unperformed. Offline mocks do not prove integration; existing PHP sessions are not continuously revalidated.
 - Independent verification found no substantiated attributable defects. The separate verifier reran both regression runners, all five PHP lint checks, frontend build, unchanged Calendar test and git diff check: every command exited 0. Parent independently reran the Firebase regression and diff check successfully.
 - Native assessment classified the candidate high risk. User explicitly selected Skip this time; the exact provider decline returned action declined and consent declined_this_candidate for the assessed target. No native review record or approval is claimed; future reviews remain enabled.
+- A1/A2 work-unit commit: `3cb70c8` (`developer: fix(auth): verify Firebase login and store password hashes`). Post-commit assessment remained high risk; native review remains explicitly declined for this implementation. A3 is still blocked, not completed. No push was performed.
 - User explicitly approved one coherent delivery for the 588-line candidate. No push, PR or service startup is authorized by that size choice. Database migration/deployment and live browser checks remain blocked rather than inferred from offline proof.
 
 ### Skill resolution
