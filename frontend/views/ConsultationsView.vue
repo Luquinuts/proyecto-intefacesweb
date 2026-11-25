@@ -1,10 +1,11 @@
+<script>
 import $ from 'jquery';
 import { Calendar } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { apiUrl } from '../config.js';
-import ConsultationTable from '../components/ConsultationTable.js';
+import ConsultationTable from '../components/ConsultationTable.vue';
 
 async function requestJson(url, options, fallbackMessage) {
     try {
@@ -255,7 +256,10 @@ export default {
             return labels[pref] || pref;
         },
     },
-    template: `
+};
+</script>
+
+<template>
         <section class="pasos-card">
             <header class="mb-4 d-flex justify-content-between align-items-start">
                 <div>
@@ -329,5 +333,4 @@ export default {
             </article>
             <p v-if="role === 'professional' && message" class="alert alert-info mt-3" role="status">{{ message }}</p>
         </section>
-    `,
-};
+</template>

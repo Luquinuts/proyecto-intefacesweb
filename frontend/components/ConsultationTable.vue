@@ -1,3 +1,4 @@
+<script>
 import $ from 'jquery';
 
 export default {
@@ -32,7 +33,10 @@ export default {
             return labels[pref] || pref;
         },
     },
-    template: `
+};
+</script>
+
+<template>
         <section class="card shadow-sm p-3">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h2 class="h5 mb-0">Consultas</h2>
@@ -53,5 +57,4 @@ export default {
                 </table>
             </div>
         </section>
-    `,
-};
+</template>

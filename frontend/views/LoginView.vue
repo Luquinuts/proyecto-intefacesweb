@@ -1,9 +1,13 @@
-import LoginForm from '../components/LoginForm.js';
+<script>
+import LoginForm from '../components/LoginForm.vue';
 
 export default {
     components: { LoginForm },
     emits: ['authenticated'],
-    template: `
+};
+</script>
+
+<template>
         <section class="pasos-card">
             <header class="text-center mb-4">
                 <h1 class="display-6">Entiende qué está pasando. Decide cómo seguir.</h1>
@@ -11,5 +15,4 @@ export default {
             </header>
             <login-form @authenticated="$emit('authenticated', $event)"></login-form>
         </section>
-    `,
-};
+</template>

@@ -1,3 +1,4 @@
+<script>
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { apiUrl } from '../config.js';
@@ -81,7 +82,10 @@ export default {
             }
         },
     },
-    template: `
+};
+</script>
+
+<template>
         <form @submit.prevent="submitLogin" class="card shadow-sm p-4">
             <h2 class="h4 mb-3">Iniciar sesión para continuar</h2>
             <label class="form-label" for="email">Correo electrónico</label>
@@ -93,5 +97,4 @@ export default {
             <p v-if="message" class="alert alert-danger">{{ message }}</p>
             <button class="btn btn-primary" :disabled="loading">{{ loading ? 'Iniciando sesión…' : 'Iniciar sesión' }}</button>
         </form>
-    `,
-};
+</template>

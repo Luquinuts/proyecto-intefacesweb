@@ -1,3 +1,4 @@
+<script>
 import { apiUrl } from '../config.js';
 
 async function requestJson(url, fallbackMessage) {
@@ -57,7 +58,10 @@ export default {
             }
         },
     },
-    template: `
+};
+</script>
+
+<template>
         <section class="pasos-card">
             <header class="mb-4">
                 <h1 class="h3">Videollamadas agendadas</h1>
@@ -77,5 +81,4 @@ export default {
                 </div>
             </div>
         </section>
-    `,
-};
+</template>

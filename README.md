@@ -36,8 +36,21 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5174/`. Vite uses strict port 5174 and proxies `/backend` to `http://localhost/proyecto-intefacesweb-develop`. If the port is occupied, stop this project's previous frontend instance; do not switch ports for this delivery. Google returns through the registered Apache callback `http://localhost/proyecto-intefacesweb-develop/backend/api/google_callback.php`, then back to port 5174. `PASOS_FRONTEND_URL` can override the configured frontend return on a custom installation.
+Open `http://localhost:5174/`. Vite uses strict port 5174. The current checkout proxies `/backend` to `http://localhost/proyecto-intefacesweb`, while the private ZIP instructions above use `proyecto-intefacesweb-develop`; this pre-existing deployment-path mismatch is not changed by the component migration. Confirm your installed Apache folder before testing backend requests. If the port is occupied, stop this project's previous frontend instance; do not switch ports for this delivery. Google returns through the registered Apache callback `http://localhost/proyecto-intefacesweb-develop/backend/api/google_callback.php`, then back to port 5174. `PASOS_FRONTEND_URL` can override the configured frontend return on a custom installation.
 
 The private ZIP intentionally includes ignored `backend/config/google.local.php`; a Git checkout does not. Keep the ZIP private and outside Git/public web roots. Never serve the backend with a static server. Obtain account credentials separately, and delete sensitive archive copies when no longer needed. Browser OAuth and a real meeting still require manual verification; another installation is not guaranteed without testing.
 
 The current MVP is implemented on the `developer` branch. The strategic proposal remains the scope reference, while runtime verification still requires XAMPP, MySQL, Firebase, and Google OAuth configuration.
+
+### Frontend component checks
+
+All six Vue components use `.vue` single-file components with ordinary scripts and the Options API. Vite compiles their templates through `@vitejs/plugin-vue`; `main.js`, `config.js`, and `vite.config.js` remain JavaScript.
+
+After installing frontend dependencies, run from the repository root:
+
+```bash
+node --experimental-vm-modules tests/frontend-sfc.mjs
+npm --prefix frontend run build
+```
+
+The offline regression checks SFC compilation, imports, PHP-session role restoration, child role props, hash navigation, OAuth callback preservation, and listener cleanup using stubs. It does not execute Firebase, Google OAuth, jQuery, or FullCalendar in a browser. The private ZIP and deployed XAMPP copies are not refreshed by this source migration.
