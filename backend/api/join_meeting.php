@@ -27,7 +27,13 @@ try {
     if (!$row || !consultation_can_read($row, (int) $_SESSION['usuario_id'], $_SESSION['rol'] ?? 'user')) denyMeeting(403);
     $meeting = consultation_meeting($row);
     if (!$meeting['can_join']) denyMeeting(403);
-    header('Location: ' . $meeting['meeting_link'], true, 302);
+    $link = $meeting['meeting_link'];
+    $email = isset($_SESSION['usuario']) ? html_entity_decode((string) $_SESSION['usuario'], ENT_QUOTES, 'UTF-8') : '';
+    if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $separator = str_contains($link, '?') ? '&' : '?';
+        $link .= $separator . 'authuser=' . rawurlencode($email);
+    }
+    header('Location: ' . $link, true, 302);
     exit;
 } catch (Throwable $e) {
     denyMeeting(500);

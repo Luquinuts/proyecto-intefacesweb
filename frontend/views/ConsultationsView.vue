@@ -322,7 +322,7 @@ export default {
                 <span v-if="selected.scheduled_at && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Fecha/hora: {{ selected.scheduled_at }}</span><br v-if="selected.scheduled_at && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
                 <div v-if="selected.contact_preference === 'video' && selected.scheduled_at" class="my-2">
                     <a v-if="isMeetingAvailable(selected)" class="btn btn-primary btn-sm" :href="meetingLinkFor(selected)" target="_blank" rel="noopener noreferrer">Unirse a Google Meet</a>
-                    <span v-else :class="meetingLabel(selected) === 'Videollamada finalizada' ? 'text-white' : 'text-muted'" role="status">{{ meetingLabel(selected) }}</span>
+                    <span v-else :class="['Videollamada finalizada', 'Disponible en la fecha y hora agendada (Buenos Aires)'].includes(meetingLabel(selected)) ? 'text-white' : 'text-muted'" role="status">{{ meetingLabel(selected) }}</span>
                 </div>
                 <div v-if="role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video')" class="mt-3">
                     <label class="form-label">Agendar cita con calendario</label>
