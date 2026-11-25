@@ -29,6 +29,7 @@ Run focused PHP tests, existing Firebase/Calendar tests, extended frontend SFC t
 Strategy single-pr: retain this one coherent approved feature as a single delivery, with local Conventional Commit work units, no publication. Forecast approximately 700–1,100 authored additions/deletions including tests; this is advisory, not a hard cap or reason to omit checks. Native review switch is user-owned; assess the final normalized candidate and honor candidate consent. No source-mutating normalizer after review freeze.
 
 - Final assessed implementation: 17 files, 1,230 authored additions/deletions. Native risk medium, slice_budget_reached. User explicitly selected Skip this time; exact provider decline returned action declined and consent declined_this_candidate for the assessed target. No native review record or approval is claimed; future reviews remain enabled.
+- C1/C2 work-unit commit: `89a0dd7` (`developer: feat(consultations): add safe scheduling and saved contacts`). Post-commit assessment remained medium/slice_budget_reached; the implementation remains explicitly unreviewed under the candidate-scoped decline. No push, live migration/deployment, account creation or private ZIP rebuild was performed.
 
 ## Initial evidence and prerequisites
 
