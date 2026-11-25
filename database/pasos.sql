@@ -57,3 +57,7 @@ ON DUPLICATE KEY UPDATE role = 'administrator';
 INSERT INTO users (firebase_uid, name, email, role)
 VALUES ('pending-abogadopasos', 'Abogado PASOS', 'abogadopasos@gmail.com', 'professional')
 ON DUPLICATE KEY UPDATE name = VALUES(name), role = 'professional';
+
+INSERT INTO users (firebase_uid, name, email, role)
+VALUES ('pending-pasoscliente', 'PASOS client', 'pasoscliente@gmail.com', 'user')
+ON DUPLICATE KEY UPDATE name = VALUES(name), role = 'user';
