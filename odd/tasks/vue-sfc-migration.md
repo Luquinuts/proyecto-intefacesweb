@@ -59,9 +59,9 @@ The user explicitly selected one coherent delivery (exception-ok), rather than c
 
 ### Remaining verification
 
-- Local work-unit commit identity will be recorded after committing this verified implementation; no push or PR is authorized.
+- Verified implementation work-unit commit: `accc603` (`developer: refactor(frontend): migrate components to Vue SFCs`). Post-commit assessment remained medium/slice_budget_reached; this migration was explicitly left without native review by the user's candidate-scoped decline. No push or PR is authorized.
 - Browser Firebase login, professional/administrator refresh, Google OAuth return, jQuery submit/filter, FullCalendar rendering and actual Google Meet behavior require manual verification in a configured installation. No browser E2E is claimed.
 
 ## Next step
 
-Record local commit evidence and hand off the verified SFC migration with the explicit browser/deployment limitations above.
+Hand off the verified SFC migration and run manual browser checks in the user's configured installation. Rebuild the private ZIP separately before delivering it; the previous ZIP predates this migration.
