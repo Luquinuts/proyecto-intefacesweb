@@ -69,7 +69,7 @@ export default {
             <div class="card shadow-sm p-3">
                 <button type="button" class="btn btn-outline-secondary btn-sm mb-2" @click="loadMeetings">Actualizar videollamadas</button>
                 <div v-if="message" class="alert alert-info">{{ message }}</div>
-                <div v-if="!meetings.length && !message" class="text-muted">No hay videollamadas agendadas.</div>
+                <div v-if="!meetings.length && !message" class="text-white">No hay videollamadas agendadas.</div>
                 <div v-for="meeting in meetings" :key="meeting.id" class="border-bottom py-2 d-flex justify-content-between align-items-center">
                     <div>
                         <strong>Consulta #{{ meeting.id }}</strong><br>

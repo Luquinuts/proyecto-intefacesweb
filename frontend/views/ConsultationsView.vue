@@ -307,7 +307,7 @@ export default {
                 <div v-else-if="contactPreference === 'phone' && !savedPhone" class="mb-3">
                     <label class="form-label" for="contact-phone">Teléfono internacional</label>
                     <input id="contact-phone" v-model="phone" type="tel" autocomplete="tel" class="form-control" maxlength="40" aria-describedby="phone-help" required>
-                    <div id="phone-help" class="form-text">Incluí + y código de país, por ejemplo +54 9 342 1234567. Se guarda una sola vez.</div>
+                    <div id="phone-help" class="form-text text-white">Incluí + y código de país, por ejemplo +54 9 342 1234567. Se guarda una sola vez.</div>
                 </div>
                 <p v-else-if="contactPreference === 'phone'" class="form-text text-white">Usaremos tu teléfono guardado: {{ savedPhone }}</p>
                 <button class="btn btn-primary" :disabled="profileLoading || !!profileError">Enviar consulta</button>
