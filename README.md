@@ -68,3 +68,47 @@ For an existing MariaDB database, apply `database/password_hash_migration.sql`, 
 ```
 
 These deterministic tests mock Google's transport, including rejected identity/password, revocation timestamp, network failures and hash changes. They do not prove real Firebase token/revocation behavior, API-key restrictions, or server connectivity. Existing PHP sessions are not continuously revalidated against Firebase. Manual approved Firebase/browser checks remain required; no real account authentication or mutation is part of the automated checks.
+
+### Consultation scheduling and contacts
+
+Before deploying this backend against an existing MariaDB schema, apply `database/consultation_contacts_migration.sql` in the selected database, in addition to the pending password-hash migration. It only adds nullable `users.phone VARCHAR(16)` and the `(professional_id, status, scheduled_at)` index, and is repeatable on MariaDB. Do not rerun `pasos.sql` or its demo seeds on existing data. New installations use the updated base schema. Migration checks passed on an isolated synthetic database; the live PASOS database and deployed XAMPP copy remain untouched and unapplied.
+
+- Phone contact requests require the first international phone (`+`, 8–15 digits; spaces, hyphens and parentheses accepted). The authenticated user's row is locked, normalized phone and consultation commit together, and an existing phone is never overwritten by a request. Video requests do not require a phone. The session endpoint restores only the current user's phone; collection/item access limits phone visibility to owner, administrator or assigned professional.
+- Bookings last 30 minutes in `America/Argentina/Buenos_Aires`. Phone and video appointments share a professional's schedule. `09:00`/`09:30` is allowed; `09:00`/`09:15` is rejected with HTTP 400 before Google changes. Each update uses a transaction at READ COMMITTED, locks the professional user before fresh consultation data, and checks overlaps with a nonlocking SELECT after acquiring that mutex. The mutex serializes the same professional; READ COMMITTED gives the subsequent overlap read a fresh committed view. An isolated real test found that locking the overlap query additionally blocked a distinct professional; removing only that extra lock made all four concurrency cases pass while preserving the professional/consultation locks. Closing frees the local slot. The visible occupied-slot buttons are advisory; the server is authoritative for every REST request.
+- New/rescheduled bookings require strict `YYYY-MM-DDTHH:mm` future dates. A same-slot check of an already scheduled event can retrieve a pending conference even after its start/end; it does not reopen a closed appointment. A closed appointment requires a different future date to be rescheduled.
+- Both listing APIs return offset-bearing `scheduled_at_iso`, `ends_at`, `can_join` and `meeting_state`, retaining `scheduled_at` for forms. Raw Meet links are omitted outside `scheduled <= server now < scheduled + 30 minutes`, including for administrators. All UI entry uses authenticated `GET backend/api/join_meeting.php?id=<id>`, which rechecks owner/admin/assigned-professional permission, scheduled status and the window at click time, then redirects only to a stored HTTPS `meet.google.com` URL. The browser clock can only affect presentation, not grant access. Use the refresh buttons at the start time; the one-second UI timer expires displayed buttons without backend polling.
+- Calendar invites use the owner's email read from the consultation's database relation, never a request-selected address. Creates and meaningful changes use `sendUpdates=all`; unchanged conference checks only GET. Missing owner attendees and old private descriptions trigger a PATCH; unrelated legitimate attendees and their response state are preserved. The private `pasosOwnerEmail` event marker identifies the prior managed attendee for replacement after an owner email change; unmarked legacy invitees require manual reconciliation because their attribution is unknown. Other private/shared metadata is preserved. Invitations contain a public consultation number, never the case description or phone. Existing private descriptions are removed when that event is next synchronized, not by a bulk remote migration.
+
+**External limits:** PASOS cannot revoke a Google URL already copied or included in a Calendar invitation, terminate a running meeting, or override Google's host admission/account settings. Closing locally does not cancel the remote Calendar event. The client manually uses or creates their own Google/Gmail account and their Firebase account; there is no Gmail signup automation. The professional still controls admission in Google Meet.
+
+**Failure boundary:** local transactions are atomic, but MySQL and Google are not a distributed transaction. An uncertain remote insert or a remote update followed by local save/commit failure can leave a Google event/invitation without the matching local state. Retrying the same consultation/date reuses its stable event identity (GET/PATCH, no duplicate insert loop). A conflicting retry is rejected locally before Google and may require manual Calendar reconciliation of that earlier remote residue. While the professional mutex is held, each Calendar/refresh request has a 3-second connect and 5-second total timeout; at most four Calendar requests plus one refresh bound outbound waiting to approximately 25 seconds, excluding local database waits. A waiting request can still time out at the database/server boundary and must be retried.
+
+Offline checks, from this repository root:
+
+```bash
+/opt/lampp/bin/php -d zend.assertions=1 -d assert.exception=1 tests/consultation-rules.php
+/opt/lampp/bin/php -d zend.assertions=1 -d assert.exception=1 tests/google-calendar-meet.php
+/opt/lampp/bin/php -d zend.assertions=1 -d assert.exception=1 tests/firebase-auth.php
+node --experimental-vm-modules tests/frontend-sfc.mjs
+npm --prefix frontend run build
+git diff --check
+```
+
+`consultation-rules.php` exercises shared SQL transaction flow with a database fake and actual endpoint code in isolated processes with database/transport boundaries replaced. It covers phone rollback/reuse, permissions, strict dates, overlap/adjacency/self exclusion, status changes and click-time redirects/denials. Neither fakes nor SFC compilation prove real MySQL concurrency, migrations, browser behavior or delivery of Google invitations.
+
+For real concurrency, a verifier must separately provision an **empty disposable** `pasos_test_<suffix>` schema with the migrated tables. Never point this runner at live PASOS data. It only inserts/deletes its own uniquely named fixture rows and makes no Google calls:
+
+```bash
+PASOS_CONCURRENCY_ALLOW=1 PASOS_CONCURRENCY_DB=pasos_test_scheduling \
+  /opt/lampp/bin/php tests/consultation-concurrency.php
+```
+
+Optional `PASOS_CONCURRENCY_HOST/PORT/USER/PASSWORD` configure that disposable connection. Without explicit opt-in and the safe database prefix, the runner exits 2 with `UNAVAILABLE` without connecting. It starts two independent PHP/MySQL sessions with a controlled barrier: same professional/time accepts one and rejects one; adjacent bookings both succeed; rollback permits recovery; a different professional completes while the first mutex remains held. A missing database/service is unavailable, not a pass.
+
+**Isolated verification completed:** the parent/verifier ran the unchanged real concurrency runner against bundled MariaDB 10.4.32 using synthetic fixtures, a private data directory/socket and `--skip-networking`. Distinct-professional independence first failed with the extra overlap `FOR UPDATE`, then all four cases passed after that single lock was removed. `database/consultation_contacts_migration.sql` applied twice preserved baseline rows/counts/IDs/roles and foreign-key definitions/rules, with nullable `VARCHAR(16)` phone and the expected schedule index. The other two migrations also preserved baseline data when applied twice, and runner fixture cleanup preserved the baseline. Evidence: `/tmp/opencode/pasos-proof-green-A6RLo9Gc/verify.py`, `report.json` and `concurrency.log` (local temporary artifacts, not shipped). The owned synthetic server stopped with exit 0 and its socket was removed. Production XAMPP and live PASOS were not touched. This proves the isolated scenarios, not a production migration or deployment. Real-browser/timezone behavior, actual Google email delivery/admission and live integration remain unverified; native assessment/review/commit evidence remains pending the parent.
+
+Official API evidence consulted for this change:
+
+- [Calendar events.insert](https://developers.google.com/workspace/calendar/api/v3/reference/events/insert): attendee email, `sendUpdates=all` and conference data version 1.
+- [Calendar events.patch](https://developers.google.com/workspace/calendar/api/v3/reference/events/patch): patch arrays replace existing arrays; preserve legitimate attendees explicitly.
+- [Meet SpaceConfig and access types](https://developers.google.com/workspace/meet/api/reference/rest/v2/spaces#SpaceConfig): meeting URI and Google-controlled admission rules, separate from PASOS entry authorization.

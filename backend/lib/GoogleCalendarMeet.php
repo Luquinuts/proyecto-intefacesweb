@@ -20,7 +20,8 @@ function google_http_json(string $method, string $url, ?array $body = null, arra
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CUSTOMREQUEST => $method,
         CURLOPT_HTTPHEADER => $requestHeaders,
-        CURLOPT_TIMEOUT => 30,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_TIMEOUT => 5,
     ]);
 
     if ($payload !== null) {
@@ -106,7 +107,8 @@ function google_refresh_access_token(mysqli $conexion, int $userId): array
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $payload,
         CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded', 'Accept: application/json'],
-        CURLOPT_TIMEOUT => 30,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_TIMEOUT => 5,
     ]);
     $raw = curl_exec($ch);
     $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -223,6 +225,9 @@ function google_create_calendar_event(mysqli $conexion, int $userId, array $even
 
 function google_sync_calendar_event(string $accessToken, string $calendarId, int $userId, array $eventData, bool $withMeet, ?callable $request = null): array
 {
+    if (empty($eventData['owner_email']) || !is_string($eventData['owner_email'])) {
+        return ['ok' => false, 'error' => 'La consulta no tiene un correo de cliente verificado.'];
+    }
     $request = $request ?? 'google_http_json';
     $config = pasos_google_config();
     // Stable identity survives uncertain inserts and a failed local database save.
@@ -235,7 +240,10 @@ function google_sync_calendar_event(string $accessToken, string $calendarId, int
 
     $body = [
         'summary' => $eventData['summary'] ?? 'Consulta PASOS',
-        'description' => $eventData['description'] ?? '',
+        // Invitations must never contain the private case text or phone.
+        'description' => '',
+        'attendees' => [['email' => $eventData['owner_email']]],
+        'extendedProperties' => ['private' => ['pasosOwnerEmail' => $eventData['owner_email']]],
         'start' => [
             'dateTime' => $eventData['start'],
             'timeZone' => $eventData['timeZone'] ?? 'America/Argentina/Buenos_Aires',
@@ -254,7 +262,7 @@ function google_sync_calendar_event(string $accessToken, string $calendarId, int
                 'conferenceSolutionKey' => ['type' => 'hangoutsMeet'],
             ]];
         }
-        $response = $request('POST', $url, $body, $headers, $query);
+        $response = $request('POST', $url, $body, $headers, $query + ['sendUpdates' => 'all']);
         if ($response['status'] === 409) {
             $response = $request('GET', $eventUrl, null, $headers, $query);
         }
@@ -266,15 +274,34 @@ function google_sync_calendar_event(string $accessToken, string $calendarId, int
         $requestedZone = new DateTimeZone($body['start']['timeZone']);
         $timeChanged = false;
         foreach (['start', 'end'] as $boundary) {
-            $existing = $response['data'][$boundary];
+            $existing = $response['data'][$boundary] ?? [];
             if (empty($existing['dateTime']) || new DateTimeImmutable($existing['dateTime'], new DateTimeZone($existing['timeZone'] ?? $requestedZone->getName()))
                 != new DateTimeImmutable($eventData[$boundary], $requestedZone)) {
                 $timeChanged = true;
             }
         }
-        if ($timeChanged) {
+        $attendees = [];
+        $seen = [];
+        $ownerKey = strtolower($eventData['owner_email']);
+        $properties = $response['data']['extendedProperties'] ?? [];
+        $previousOwner = $properties['private']['pasosOwnerEmail'] ?? '';
+        foreach ($response['data']['attendees'] ?? [] as $attendee) {
+            $key = strtolower($attendee['email'] ?? '');
+            // shortcut: unmarked legacy invitees cannot be attributed; reconcile those manually.
+            if ($previousOwner !== '' && strtolower($previousOwner) !== $ownerKey && $key === strtolower($previousOwner)) continue;
+            if ($key !== '' && !isset($seen[$key])) {
+                $attendees[] = $attendee;
+                $seen[$key] = true;
+            }
+        }
+        $ownerMissing = !isset($seen[$ownerKey]);
+        if ($ownerMissing) $attendees[] = ['email' => $eventData['owner_email']];
+        $body['attendees'] = $attendees;
+        $properties['private']['pasosOwnerEmail'] = $eventData['owner_email'];
+        $body['extendedProperties'] = $properties;
+        if ($timeChanged || $ownerMissing || $previousOwner !== $eventData['owner_email'] || ($response['data']['description'] ?? '') !== '') {
             unset($body['id'], $body['conferenceData']);
-            $response = $request('PATCH', $eventUrl, $body, $headers, $query);
+            $response = $request('PATCH', $eventUrl, $body, $headers, $query + ['sendUpdates' => 'all']);
         }
     }
 

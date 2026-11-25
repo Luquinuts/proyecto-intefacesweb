@@ -33,6 +33,12 @@ export default {
             consultations: [],
             description: '',
             contactPreference: 'phone',
+            phone: '',
+            savedPhone: null,
+            profileLoading: true,
+            profileError: '',
+            now: Date.now(),
+            clockTimer: null,
             selected: null,
             updateStatus: 'received',
             professionalNote: '',
@@ -50,13 +56,18 @@ export default {
         };
     },
     mounted() {
+        this.loadProfile();
+        this.clockTimer = setInterval(() => { this.now = Date.now(); }, 1000);
         this.loadConsultations();
         this.loadGoogleStatus();
         this.handleGoogleCallback();
         $(this.$el).on('submit.pasosConsultations', '#consultation-form', (event) => this.submitConsultation(event));
         $(this.$el).on('submit.pasosConsultations', '#consultation-update-form', (event) => this.updateConsultation(event));
     },
-    beforeUnmount() { $(this.$el).off('.pasosConsultations'); },
+    beforeUnmount() {
+        $(this.$el).off('.pasosConsultations');
+        clearInterval(this.clockTimer);
+    },
     updated() {
         this.$nextTick(() => {
             if (this.role === 'professional' && (this.selected && (this.selected.contact_preference === 'phone' || this.selected.contact_preference === 'video'))) {
@@ -88,6 +99,14 @@ export default {
         });
     },
     methods: {
+        async loadProfile() {
+            this.profileLoading = true;
+            this.profileError = '';
+            const result = await requestJson(apiUrl('sesion_actual.php'), undefined, 'No se pudo cargar tu teléfono guardado.');
+            if (result.correcto) this.savedPhone = result.phone || null;
+            else this.profileError = result.mensaje || 'No se pudo cargar tu teléfono guardado.';
+            this.profileLoading = false;
+        },
         logout() {
             fetch(apiUrl('cerrar_sesion.php'), { method: 'POST' })
                 .finally(() => {
@@ -128,7 +147,10 @@ export default {
         },
         async loadConsultations() {
             const result = await requestJson(apiUrl('api/consultations.php'), undefined, 'No se pudieron cargar las consultas.');
-            if (result.correcto) this.consultations = result.consultations;
+            if (result.correcto) {
+                this.consultations = result.consultations;
+                if (this.selected) this.selected = this.consultations.find((consultation) => consultation.id === this.selected.id) || null;
+            }
             else this.message = result.mensaje;
         },
         selectConsultation(consultation) {
@@ -147,15 +169,20 @@ export default {
         },
         async submitConsultation(event) {
             event.preventDefault();
+            if (this.profileLoading || this.profileError) return;
             this.message = '';
+            const payload = { description: this.description, contact_preference: this.contactPreference };
+            if (this.contactPreference === 'phone' && !this.savedPhone) payload.phone = this.phone;
             const result = await requestJson(apiUrl('api/consultations.php'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ description: this.description, contact_preference: this.contactPreference }),
+                body: JSON.stringify(payload),
             }, 'No se pudo enviar la consulta.');
             if (result.correcto) {
                 this.description = '';
                 this.message = 'Consulta enviada.';
+                await this.loadProfile();
+                this.phone = '';
                 this.loadConsultations();
             } else this.message = result.mensaje || 'No se pudo enviar la consulta.';
         },
@@ -169,10 +196,10 @@ export default {
             this.message = result.correcto ? 'Consulta actualizada.' : (result.mensaje || 'No se pudo actualizar la consulta.');
             if (result.correcto) {
                 await this.loadConsultations();
-                this.selected = this.consultations.find((consultation) => consultation.id === this.selected.id) || null;
             }
         },
         selectTime(slot) {
+            if (this.isSlotBusy(slot)) return;
             this.scheduleTime = slot;
             this.scheduleDateTime = `${this.selectedDate}T${slot}`;
         },
@@ -205,7 +232,6 @@ export default {
                 if (result.correcto && result.conference_status === 'failure') this.message = 'Cita guardada, pero Google no pudo generar la conferencia. Revisa el evento en Calendar; no se creará otro evento al comprobar.';
                 if (result.correcto) {
                     await this.loadConsultations();
-                    if (this.selected?.id === selectedId) this.selected = this.consultations.find((consultation) => consultation.id === selectedId) || null;
                 }
             } finally {
                 this.scheduling = false;
@@ -220,24 +246,24 @@ export default {
             this.message = result.correcto ? 'Consulta cerrada.' : (result.mensaje || 'No se pudo cerrar la consulta.');
             if (result.correcto) {
                 await this.loadConsultations();
-                this.selected = this.consultations.find((consultation) => consultation.id === this.selected.id) || null;
             }
         },
         isMeetingAvailable(consultation) {
-            if (!consultation || !consultation.scheduled_at) return false;
-            const scheduled = new Date(String(consultation.scheduled_at).replace(' ', 'T'));
-            if (Number.isNaN(scheduled.getTime())) return false;
-            return new Date() >= scheduled;
+            return !!consultation?.can_join && this.now < Date.parse(consultation.ends_at);
         },
         meetingLinkFor(consultation) {
-            if (!consultation || !consultation.meeting_link) return '';
-            let link = consultation.meeting_link;
-            const email = this.googleEmail || '';
-            if (email) {
-                const separator = link.includes('?') ? '&' : '?';
-                link += `${separator}authuser=${encodeURIComponent(email)}`;
-            }
-            return link;
+            return consultation ? apiUrl(`api/join_meeting.php?id=${consultation.id}`) : '';
+        },
+        meetingLabel(consultation) {
+            if (consultation.status === 'closed' || this.now >= Date.parse(consultation.ends_at)) return 'Videollamada finalizada';
+            if (this.now < Date.parse(consultation.scheduled_at_iso)) return 'Disponible en la fecha y hora agendada (Buenos Aires)';
+            return this.isMeetingAvailable(consultation) ? 'Unirse a Google Meet' : 'Actualizá las consultas para comprobar el acceso';
+        },
+        isSlotBusy(slot) {
+            const start = Date.parse(`${this.selectedDate}T${slot}:00-03:00`);
+            return this.consultations.some((item) => item.id !== this.selected?.id && item.status === 'scheduled'
+                && ['phone', 'video'].includes(item.contact_preference)
+                && Date.parse(item.scheduled_at_iso) < start + 1800000 && Date.parse(item.ends_at) > start);
         },
         getStatusLabel(status) {
             const labels = {
@@ -274,20 +300,30 @@ export default {
                 <select id="contact-preference" v-model="contactPreference" class="form-select mb-3">
                     <option value="phone">Teléfono</option><option value="video">Videollamada</option>
                 </select>
-                <button class="btn btn-primary">Enviar consulta</button>
+                <p v-if="profileLoading" role="status">Cargando datos de contacto…</p>
+                <div v-else-if="profileError" class="alert alert-warning" role="alert">
+                    {{ profileError }} <button type="button" class="btn btn-outline-secondary btn-sm" @click="loadProfile">Reintentar</button>
+                </div>
+                <div v-else-if="contactPreference === 'phone' && !savedPhone" class="mb-3">
+                    <label class="form-label" for="contact-phone">Teléfono internacional</label>
+                    <input id="contact-phone" v-model="phone" type="tel" autocomplete="tel" class="form-control" maxlength="40" aria-describedby="phone-help" required>
+                    <div id="phone-help" class="form-text">Incluí + y código de país, por ejemplo +54 9 342 1234567. Se guarda una sola vez.</div>
+                </div>
+                <p v-else-if="contactPreference === 'phone'" class="form-text">Usaremos tu teléfono guardado: {{ savedPhone }}</p>
+                <button class="btn btn-primary" :disabled="profileLoading || !!profileError">Enviar consulta</button>
                 <p v-if="message" class="alert alert-info mt-3 mb-0">{{ message }}</p>
             </form>
+            <button type="button" class="btn btn-outline-secondary btn-sm mb-2" @click="loadConsultations">Actualizar consultas</button>
             <consultation-table :consultations="consultations" @select="selectConsultation"></consultation-table>
             <article v-if="selected" class="alert alert-secondary mt-3">
                 <strong>Consulta seleccionada:</strong> {{ selected.description }}<br>
                 <span v-if="!(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Preferencia de contacto: {{ getContactLabel(selected.contact_preference) }}</span><br v-if="!(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
                 <span v-if="!(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Estado: {{ getStatusLabel(selected.status) }}</span><br v-if="!(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
                 <span v-if="selected.scheduled_at && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Fecha/hora: {{ selected.scheduled_at }}</span><br v-if="selected.scheduled_at && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
-                <span v-if="selected.meeting_link && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
-                    Enlace:
-                    <a v-if="isMeetingAvailable(selected)" :href="meetingLinkFor(selected)" target="_blank" rel="noopener noreferrer">{{ selected.meeting_link }}</a>
-                    <span v-else class="text-muted">Disponible en la fecha y hora agendada</span>
-                </span><br v-if="selected.meeting_link && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
+                <div v-if="selected.contact_preference === 'video' && selected.scheduled_at" class="my-2">
+                    <a v-if="isMeetingAvailable(selected)" class="btn btn-primary btn-sm" :href="meetingLinkFor(selected)" target="_blank" rel="noopener noreferrer">Unirse a Google Meet</a>
+                    <span v-else class="text-muted" role="status">{{ meetingLabel(selected) }}</span>
+                </div>
                 <div v-if="role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video')" class="mt-3">
                     <label class="form-label">Agendar cita con calendario</label>
                     <div class="mb-2 p-2 border rounded" style="background:#fff;">
@@ -308,7 +344,7 @@ export default {
                             <strong>Horarios disponibles - {{ selectedDate }}</strong>
                         </div>
                         <div class="d-flex flex-wrap gap-2">
-                            <button v-for="slot in timeSlots" :key="slot" type="button" class="btn btn-sm" :class="scheduleTime === slot ? 'btn-primary' : 'btn-outline-secondary'" @click="selectTime(slot)">{{ slot }}</button>
+                            <button v-for="slot in timeSlots" :key="slot" type="button" class="btn btn-sm" :class="scheduleTime === slot ? 'btn-primary' : 'btn-outline-secondary'" :disabled="isSlotBusy(slot)" :aria-label="slot + (isSlotBusy(slot) ? ' ocupado' : ' disponible')" @click="selectTime(slot)">{{ slot }}{{ isSlotBusy(slot) ? ' (ocupado)' : '' }}</button>
                         </div>
                     </div>
                     <div v-if="selected.contact_preference === 'video'" class="form-text mb-2">El enlace de Google Meet se generará automáticamente al agendar.</div>

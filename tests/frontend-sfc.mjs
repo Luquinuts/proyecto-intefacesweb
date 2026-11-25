@@ -200,7 +200,7 @@ async function loadComponent(filename, extra = {}) {
         text() { return element.text; },
         toggle(value) { element.visible = value; },
     });
-    const context = vm.createContext({ window: { location: { hash: '' } }, console, fetch: async () => ({ ok: true, json: async () => ({ pregunta: '1 + 1', correcto: false }) }), ...extra });
+    const context = vm.createContext({ window: { location: { hash: '' } }, console, setInterval: () => 1, clearInterval: () => {}, fetch: async () => ({ ok: true, json: async () => ({ pregunta: '1 + 1', correcto: false }) }), ...extra });
     const module = new vm.SourceTextModule(compiled.get(filename).script, { context });
     await module.link(async (specifier) => {
         let exports = { default: {} };
@@ -298,3 +298,85 @@ assert.equal(captchaLoads, 3, 'Refresh consumed CAPTCHA only after failure, neve
 assert.equal(flow.emitted.length, 1, 'HTTP errors must not authenticate despite a success-shaped body');
 assert.equal(flow.state.message, '');
 console.log('PASS: six SFCs, root navigation, delegated jQuery events/cleanup, late forms, accessible selection, login failure/retry');
+
+const profileRequests = [];
+const contact = await loadComponent('views/ConsultationsView.vue', {
+    fetch: async (url, options) => {
+        profileRequests.push([url, options]);
+        return { ok: true, json: async () => url === 'sesion_actual.php'
+            ? { correcto: true, phone: '+5493421234567' } : { correcto: true, consultations: [] } };
+    },
+});
+assert.equal(contact.state.profileLoading, true);
+await contact.state.loadProfile();
+assert.equal(contact.state.savedPhone, '+5493421234567');
+assert.equal(contact.state.profileLoading, false);
+contact.state.contactPreference = 'phone';
+contact.state.phone = '+12345678901';
+await contact.state.submitConsultation({ preventDefault() {} });
+assert.equal(JSON.parse(profileRequests.find(([, options]) => options?.method === 'POST')[1].body).phone, undefined, 'Saved phone is reused, not overwritten');
+const before = { id: 7, can_join: false, scheduled_at_iso: '2099-12-01T09:00:00-03:00', ends_at: '2099-12-01T09:30:00-03:00' };
+assert.equal(contact.state.isMeetingAvailable(before), false);
+assert.equal(contact.state.meetingLinkFor({ id: 7, can_join: true }), 'api/join_meeting.php?id=7');
+const expired = { id: 7, can_join: true, ends_at: '2000-01-01T09:30:00-03:00' };
+assert.equal(contact.state.isMeetingAvailable(expired), false);
+const video = await loadComponent('views/VideoCallView.vue');
+assert.equal(video.state.isMeetingAvailable(expired), false);
+assert.match(readFileSync(resolve(frontend, 'views/VideoCallView.vue'), 'utf8'), /join_meeting\.php/);
+console.log('PASS: profile loading/reuse and authenticated expiring meeting entry');
+
+let persistedPhone = null;
+const submitted = [];
+const firstPhone = await loadComponent('views/ConsultationsView.vue', {
+    fetch: async (url, options) => {
+        if (options?.method === 'POST') {
+            submitted.push(JSON.parse(options.body));
+            persistedPhone = '+5493421234567';
+        }
+        return { ok: true, json: async () => url === 'sesion_actual.php'
+            ? { correcto: true, phone: persistedPhone } : { correcto: true, consultations: [] } };
+    },
+});
+await firstPhone.state.submitConsultation({ preventDefault() {} });
+assert.equal(submitted.length, 0, 'Do not submit before profile restoration');
+await firstPhone.state.loadProfile();
+assert.equal(firstPhone.state.savedPhone, null);
+Object.assign(firstPhone.state, { contactPreference: 'phone', phone: '+54 (9) 342-1234567' });
+await firstPhone.state.submitConsultation({ preventDefault() {} });
+assert.equal(submitted[0].phone, '+54 (9) 342-1234567');
+assert.equal(firstPhone.state.savedPhone, persistedPhone);
+await firstPhone.state.loadProfile();
+await firstPhone.state.submitConsultation({ preventDefault() {} });
+assert.equal(submitted[1].phone, undefined, 'Reloaded profile must not prompt or overwrite');
+const failedProfile = await loadComponent('views/ConsultationsView.vue', { fetch: async () => { throw new Error('Offline'); } });
+await failedProfile.state.loadProfile();
+assert.equal(failedProfile.state.profileLoading, false);
+assert.ok(failedProfile.state.profileError);
+const contactSource = readFileSync(resolve(frontend, 'views/ConsultationsView.vue'), 'utf8');
+assert.match(contactSource, /v-else-if="contactPreference === 'phone' && !savedPhone"/);
+assert.match(contactSource, /:disabled="profileLoading \|\| !!profileError"/);
+Object.assign(contact.state, { selectedDate: '2099-12-01', selected: { id: 7 }, consultations: [{ id: 8, status: 'scheduled', contact_preference: 'phone', scheduled_at_iso: '2099-12-01T09:00:00-03:00', ends_at: '2099-12-01T09:30:00-03:00' }] });
+assert.equal(contact.state.isSlotBusy('09:00'), true);
+assert.equal(contact.state.isSlotBusy('09:15'), true);
+assert.equal(contact.state.isSlotBusy('09:30'), false);
+let opened;
+const click = await loadComponent('views/VideoCallView.vue', { window: { open: (url) => { opened = url; } } });
+click.state.openMeeting(expired);
+assert.equal(opened, undefined);
+click.state.openMeeting({ id: 7, can_join: true, ends_at: '2099-12-01T09:30:00-03:00', meeting_link: 'https://evil.test/' });
+assert.equal(opened, 'api/join_meeting.php?id=7', 'Stored/browser link must never select the redirect');
+console.log('PASS: first-phone POST/reload/error guards, occupied slots and click-time entry URL');
+let refreshedRows = [{ id: 7, can_join: true, ends_at: '2099-12-01T09:30:00-03:00' }];
+const refresh = await loadComponent('views/ConsultationsView.vue', {
+    fetch: async () => ({ ok: true, json: async () => ({ correcto: true, consultations: refreshedRows }) }),
+});
+Object.assign(refresh.state, { selected: before, professionalNote: 'Unsaved note', updateStatus: 'closed', scheduleDateTime: '2099-12-02T10:00' });
+await refresh.state.loadConsultations();
+assert.equal(refresh.state.selected, refreshedRows[0], 'Collection refresh must replace stale selected access state');
+assert.equal(refresh.state.isMeetingAvailable(refresh.state.selected), true);
+assert.equal(refresh.state.professionalNote, 'Unsaved note');
+assert.equal(refresh.state.updateStatus, 'closed');
+assert.equal(refresh.state.scheduleDateTime, '2099-12-02T10:00');
+refreshedRows = [];
+await refresh.state.loadConsultations();
+assert.equal(refresh.state.selected, null, 'A removed selection must be cleared');

@@ -2,6 +2,7 @@
 
 session_start();
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store');
 
 function respond(array $payload, int $status): void
 {
@@ -16,6 +17,7 @@ if (empty($_SESSION['autenticado']) || empty($_SESSION['usuario_id'])) {
 
 require_once __DIR__ . '/../config/conexion.php';
 require_once __DIR__ . '/../lib/GoogleCalendarMeet.php';
+require_once __DIR__ . '/../lib/ConsultationRules.php';
 $userId = (int) $_SESSION['usuario_id'];
 $role = $_SESSION['rol'] ?? 'user';
 $joinEmail = null;
@@ -26,21 +28,21 @@ if ($role === 'professional') {
 
 if ($role === 'professional') {
     $statement = $conexion->prepare(
-        'SELECT id, scheduled_at, meeting_link, status FROM consultations 
+        'SELECT id, scheduled_at, meeting_link, status, contact_preference FROM consultations
          WHERE professional_id = ? AND contact_preference = "video" AND scheduled_at IS NOT NULL AND meeting_link IS NOT NULL AND meeting_link != "" 
          ORDER BY scheduled_at ASC'
     );
     $statement->bind_param('i', $userId);
 } elseif ($role === 'user') {
     $statement = $conexion->prepare(
-        'SELECT id, scheduled_at, meeting_link, status FROM consultations 
+        'SELECT id, scheduled_at, meeting_link, status, contact_preference FROM consultations
          WHERE user_id = ? AND contact_preference = "video" AND scheduled_at IS NOT NULL AND meeting_link IS NOT NULL AND meeting_link != "" 
          ORDER BY scheduled_at ASC'
     );
     $statement->bind_param('i', $userId);
 } else {
     $statement = $conexion->prepare(
-        'SELECT id, scheduled_at, meeting_link, status FROM consultations 
+        'SELECT id, scheduled_at, meeting_link, status, contact_preference FROM consultations
          WHERE contact_preference = "video" AND scheduled_at IS NOT NULL AND meeting_link IS NOT NULL AND meeting_link != "" 
          ORDER BY scheduled_at ASC'
     );
@@ -53,7 +55,7 @@ if (!$statement || !$statement->execute()) {
 $result = $statement->get_result();
 $meetings = [];
 while ($row = $result->fetch_assoc()) {
-    $meetings[] = $row;
+    $meetings[] = array_merge($row, consultation_meeting($row));
 }
 $statement->close();
 

@@ -25,11 +25,15 @@ export default {
             meetings: [],
             message: '',
             joinEmail: '',
+            now: Date.now(),
+            clockTimer: null,
         };
     },
     mounted() {
         this.loadMeetings();
+        this.clockTimer = setInterval(() => { this.now = Date.now(); }, 1000);
     },
+    beforeUnmount() { clearInterval(this.clockTimer); },
     methods: {
         async loadMeetings() {
             const result = await requestJson(apiUrl('api/videocall.php'), 'No se pudieron cargar las videollamadas.');
@@ -41,21 +45,16 @@ export default {
             }
         },
         isMeetingAvailable(meeting) {
-            if (!meeting || !meeting.scheduled_at) return false;
-            const scheduled = new Date(String(meeting.scheduled_at).replace(' ', 'T'));
-            if (Number.isNaN(scheduled.getTime())) return false;
-            return new Date() >= scheduled;
+            return !!meeting?.can_join && this.now < Date.parse(meeting.ends_at);
+        },
+        meetingLabel(meeting) {
+            if (meeting.status === 'closed' || this.now >= Date.parse(meeting.ends_at)) return 'Videollamada finalizada.';
+            if (this.now < Date.parse(meeting.scheduled_at_iso)) return 'Disponible en la fecha y hora agendada (Buenos Aires).';
+            return this.isMeetingAvailable(meeting) ? 'Disponible durante 30 minutos.' : 'Actualizá para comprobar el acceso.';
         },
         openMeeting(meeting) {
             if (!this.isMeetingAvailable(meeting)) return;
-            if (meeting && meeting.meeting_link) {
-                let link = meeting.meeting_link;
-                if (this.joinEmail) {
-                    const separator = link.includes('?') ? '&' : '?';
-                    link += `${separator}authuser=${encodeURIComponent(this.joinEmail)}`;
-                }
-                window.open(link, '_blank', 'noopener,noreferrer');
-            }
+            window.open(apiUrl(`api/join_meeting.php?id=${meeting.id}`), '_blank', 'noopener,noreferrer');
         },
     },
 };
@@ -68,6 +67,7 @@ export default {
                 <p>Solo se muestran cuando hay una videollamada agendada con preferencia Google Meet.</p>
             </header>
             <div class="card shadow-sm p-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm mb-2" @click="loadMeetings">Actualizar videollamadas</button>
                 <div v-if="message" class="alert alert-info">{{ message }}</div>
                 <div v-if="!meetings.length && !message" class="text-muted">No hay videollamadas agendadas.</div>
                 <div v-for="meeting in meetings" :key="meeting.id" class="border-bottom py-2 d-flex justify-content-between align-items-center">
@@ -75,7 +75,7 @@ export default {
                         <strong>Consulta #{{ meeting.id }}</strong><br>
                         <span>Fecha/Hora: {{ meeting.scheduled_at }}</span><br>
                         <span>Estado: {{ meeting.status }}</span>
-                        <div v-if="!isMeetingAvailable(meeting)" class="text-muted small mt-1">El enlace se habilitará en la fecha y hora agendada.</div>
+                        <div class="text-muted small mt-1" role="status">{{ meetingLabel(meeting) }}</div>
                     </div>
                     <button class="btn btn-primary" :disabled="!isMeetingAvailable(meeting)" @click="openMeeting(meeting)">Unirse a Google Meet</button>
                 </div>

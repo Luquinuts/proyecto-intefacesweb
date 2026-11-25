@@ -50,15 +50,16 @@ export default {
             </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
-                    <thead><tr><th>Descripción</th><th>Preferencia de contacto</th><th>Estado</th><th>Fecha</th></tr></thead>
+                    <thead><tr><th scope="col">Descripción</th><th scope="col">Preferencia de contacto</th><th scope="col">Teléfono</th><th scope="col">Estado</th><th scope="col">Fecha</th></tr></thead>
                     <tbody>
                         <tr v-for="consultation in consultations" :key="consultation.id" :data-id="consultation.id" tabindex="0" role="button" aria-label="Seleccionar consulta">
                             <td>{{ consultation.description }}</td>
                             <td>{{ getContactLabel(consultation.contact_preference) }}</td>
+                            <td>{{ consultation.phone || '—' }}</td>
                             <td>{{ getStatusLabel(consultation.status) }}</td>
                             <td>{{ consultation.requested_at }}</td>
                         </tr>
-                        <tr v-if="!consultations.length"><td colspan="4">Aún no hay consultas.</td></tr>
+                        <tr v-if="!consultations.length"><td colspan="5">Aún no hay consultas.</td></tr>
                     </tbody>
                 </table>
             </div>

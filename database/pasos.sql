@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(120) NOT NULL,
     email VARCHAR(190) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NULL,
+    phone VARCHAR(16) NULL,
     role ENUM('user', 'administrator', 'professional') NOT NULL DEFAULT 'user',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -23,6 +24,7 @@ CREATE TABLE IF NOT EXISTS consultations (
     scheduled_at DATETIME NULL,
     meeting_link VARCHAR(2048) NULL,
     google_event_id VARCHAR(190) NULL,
+    INDEX idx_consultation_schedule (professional_id, status, scheduled_at),
     CONSTRAINT fk_consultations_user
         FOREIGN KEY (user_id) REFERENCES users(id)
         ON UPDATE CASCADE ON DELETE RESTRICT,
