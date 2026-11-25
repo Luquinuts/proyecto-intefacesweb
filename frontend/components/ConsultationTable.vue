@@ -5,14 +5,20 @@ export default {
     props: { consultations: { type: Array, default: () => [] } },
     emits: ['select'],
     mounted() {
-        $(this.$el).on('input', '#consultation-filter', (event) => {
+        $(this.$el).on('input.pasosTable', '#consultation-filter', (event) => {
             const text = event.target.value.toLowerCase();
             $(this.$el).find('tbody tr').each(function () {
                 $(this).toggle($(this).text().toLowerCase().includes(text));
             });
         });
+        $(this.$el).on('click.pasosTable keydown.pasosTable', 'tbody tr[data-id]', (event) => {
+            if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+            if (event.type === 'keydown') event.preventDefault();
+            const consultation = this.consultations.find((item) => String(item.id) === event.currentTarget.dataset.id);
+            if (consultation) this.selectConsultation(consultation);
+        });
     },
-    beforeUnmount() { $(this.$el).off('input', '#consultation-filter'); },
+    beforeUnmount() { $(this.$el).off('.pasosTable'); },
     methods: {
         selectConsultation(consultation) { this.$emit('select', consultation); },
         getStatusLabel(status) {
@@ -46,7 +52,7 @@ export default {
                 <table class="table table-hover align-middle mb-0">
                     <thead><tr><th>Descripción</th><th>Preferencia de contacto</th><th>Estado</th><th>Fecha</th></tr></thead>
                     <tbody>
-                        <tr v-for="consultation in consultations" :key="consultation.id" @click="selectConsultation(consultation)">
+                        <tr v-for="consultation in consultations" :key="consultation.id" :data-id="consultation.id" tabindex="0" role="button" aria-label="Seleccionar consulta">
                             <td>{{ consultation.description }}</td>
                             <td>{{ getContactLabel(consultation.contact_preference) }}</td>
                             <td>{{ getStatusLabel(consultation.status) }}</td>

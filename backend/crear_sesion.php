@@ -17,23 +17,28 @@ if (empty($_SESSION['captcha_validado'])) {
 }
 
 $datos = json_decode(file_get_contents('php://input'), true);
-$email = is_array($datos) && isset($datos['email']) ? filter_var($datos['email'], FILTER_VALIDATE_EMAIL) : false;
-$uid = is_array($datos) && isset($datos['uid']) ? trim((string) $datos['uid']) : '';
-$token = is_array($datos) && isset($datos['token']) ? trim((string) $datos['token']) : '';
-
-if (!$email || $uid === '' || $token === '' || strlen($uid) > 128) {
+if (!is_array($datos)) {
     http_response_code(400);
     echo json_encode(['correcto' => false, 'mensaje' => 'Invalid session data.']);
     exit;
 }
 
-// Academic limitation preserved from the first partial: token verification
-// with Firebase Admin SDK remains a pending decision and is not added here.
+require_once __DIR__ . '/lib/FirebaseAuth.php';
+require_once __DIR__ . '/config/firebase.php';
+try {
+    $identity = firebase_verify_login($datos, $firebaseConfig);
+} catch (RuntimeException $error) {
+    http_response_code(401);
+    echo json_encode(['correcto' => false, 'mensaje' => 'Could not verify Firebase credentials.']);
+    exit;
+}
+$email = $identity['email'];
+$uid = $identity['uid'];
 require_once __DIR__ . '/config/conexion.php';
 
 $name = strstr($email, '@', true) ?: 'PASOS user';
 
-$statement = $conexion->prepare('SELECT firebase_uid, role FROM users WHERE email = ? LIMIT 1');
+$statement = $conexion->prepare('SELECT firebase_uid, role, password_hash FROM users WHERE email = ? LIMIT 1');
 if (!$statement) {
     http_response_code(500);
     echo json_encode(['correcto' => false, 'mensaje' => 'Could not prepare user lookup.']);
@@ -41,20 +46,22 @@ if (!$statement) {
 }
 $statement->bind_param('s', $email);
 $statement->execute();
-$statement->bind_result($storedUid, $storedRole);
+$statement->bind_result($storedUid, $storedRole, $storedHash);
 $emailFound = $statement->fetch();
 $statement->close();
+$passwordHash = firebase_password_hash($datos['password'], $emailFound ? $storedHash : null);
+unset($datos['password']);
 
 if ($emailFound && $storedUid !== $uid) {
     if (($storedUid === 'replace-with-firebase-uid' && $storedRole === 'administrator') ||
         (strpos($storedUid, 'pending-') === 0)) {
-        $statement = $conexion->prepare('UPDATE users SET firebase_uid = ?, name = ? WHERE email = ?');
+        $statement = $conexion->prepare('UPDATE users SET firebase_uid = ?, name = ?, password_hash = ? WHERE email = ?');
         if (!$statement) {
             http_response_code(500);
             echo json_encode(['correcto' => false, 'mensaje' => 'Could not prepare user update.']);
             exit;
         }
-        $statement->bind_param('sss', $uid, $name, $email);
+        $statement->bind_param('ssss', $uid, $name, $passwordHash, $email);
     } else {
         http_response_code(409);
         echo json_encode(['correcto' => false, 'mensaje' => 'Email is already linked to another Firebase user.']);
@@ -62,15 +69,15 @@ if ($emailFound && $storedUid !== $uid) {
     }
 } else {
     $statement = $conexion->prepare(
-        'INSERT INTO users (firebase_uid, name, email) VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE email = VALUES(email), name = VALUES(name)'
+        'INSERT INTO users (firebase_uid, name, email, password_hash) VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE email = VALUES(email), name = VALUES(name), password_hash = VALUES(password_hash)'
     );
     if (!$statement) {
         http_response_code(500);
         echo json_encode(['correcto' => false, 'mensaje' => 'Could not prepare user statement.']);
         exit;
     }
-    $statement->bind_param('sss', $uid, $name, $email);
+    $statement->bind_param('ssss', $uid, $name, $email, $passwordHash);
 }
 
 if (!$statement->execute()) {
@@ -82,6 +89,11 @@ if (!$statement->execute()) {
 $statement->close();
 
 $statement = $conexion->prepare('SELECT id, role, name, email FROM users WHERE firebase_uid = ? LIMIT 1');
+if (!$statement) {
+    http_response_code(500);
+    echo json_encode(['correcto' => false, 'mensaje' => 'Could not prepare user lookup.']);
+    exit;
+}
 $statement->bind_param('s', $uid);
 $statement->execute();
 $statement->bind_result($userId, $role, $storedName, $storedEmail);
@@ -94,6 +106,11 @@ if (!$found) {
     exit;
 }
 
+if (!session_regenerate_id(true)) {
+    http_response_code(500);
+    echo json_encode(['correcto' => false, 'mensaje' => 'Could not initialize session.']);
+    exit;
+}
 $_SESSION['autenticado'] = true;
 $_SESSION['usuario_id'] = $userId;
 $_SESSION['usuario'] = htmlspecialchars($storedEmail, ENT_QUOTES, 'UTF-8');

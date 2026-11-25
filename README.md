@@ -53,4 +53,18 @@ node --experimental-vm-modules tests/frontend-sfc.mjs
 npm --prefix frontend run build
 ```
 
-The offline regression checks SFC compilation, imports, PHP-session role restoration, child role props, hash navigation, OAuth callback preservation, and listener cleanup using stubs. It does not execute Firebase, Google OAuth, jQuery, or FullCalendar in a browser. The private ZIP and deployed XAMPP copies are not refreshed by this source migration.
+The offline regression checks SFC compilation, imports, PHP-session roles, navigation, delegated jQuery submit/selection/filter/keyboard handlers (with event stubs), late-rendered forms, cleanup, and failed-login retries. It does not run a real browser, Firebase, Google OAuth, or FullCalendar. The private ZIP is not refreshed by these changes.
+
+### Firebase identity and password-hash boundary
+
+Firebase remains the only login authority. After the selected Firebase v10/CAPTCHA flow, PHP submits the ID token to Google's `accounts:lookup`, checks the configured project and token timestamps/subject, and independently verifies the submitted password through `accounts:signInWithPassword` using Google's returned identity. Rejection occurs before database access or session authentication changes; the stored hash never permits offline/local login. Public `backend/config/firebase.php` must match the browser project; it contains no service-account credential.
+
+Use HTTPS outside localhost: the login JSON now includes the password as well as the ID token. Neither is logged, returned, or stored in the PHP session. Outbound requests use fixed HTTPS Google endpoints, TLS verification and timeouts. Only verified passwords populate nullable `users.password_hash`; existing hashes are reused or updated with `password_verify`/`password_needs_rehash`. Argon2id is preferred when available. Without it, bcrypt receives base64-encoded SHA-384 of the exact password (64 bytes), preventing silent 72-byte suffix truncation; this is the consistent format for this application's bcrypt hashes, not raw-password bcrypt. Passwords are never trimmed; the server rejects passwords exceeding 4096 bytes.
+
+For an existing MariaDB database, apply `database/password_hash_migration.sql`, not the full seed. It only adds the nullable column and can run twice. New installations use `database/pasos.sql`.
+
+```bash
+/opt/lampp/bin/php -d zend.assertions=1 -d assert.exception=1 tests/firebase-auth.php
+```
+
+These deterministic tests mock Google's transport, including rejected identity/password, revocation timestamp, network failures and hash changes. They do not prove real Firebase token/revocation behavior, API-key restrictions, or server connectivity. Existing PHP sessions are not continuously revalidated against Firebase. Manual approved Firebase/browser checks remain required; no real account authentication or mutation is part of the automated checks.

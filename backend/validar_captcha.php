@@ -3,11 +3,19 @@
 session_start();
 header('Content-Type: application/json; charset=utf-8');
 
-$captcha = isset($_POST['captcha']) ? filter_var($_POST['captcha'], FILTER_VALIDATE_INT) : false;
-$correcto = $captcha !== false && isset($_SESSION['captcha']) && $captcha === $_SESSION['captcha'];
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Allow: POST');
+    http_response_code(405);
+    echo json_encode(['correcto' => false]);
+    exit;
+}
+
+$captcha = $_POST['captcha'] ?? null;
+$correcto = count($_POST) === 1 && is_string($captcha) && preg_match('/^[0-9]{1,3}$/D', $captcha) &&
+    isset($_SESSION['captcha']) && (int) $captcha === $_SESSION['captcha'];
+unset($_SESSION['captcha'], $_SESSION['captcha_validado']);
 
 if ($correcto) {
-    unset($_SESSION['captcha']);
     $_SESSION['captcha_validado'] = true;
     http_response_code(200);
 } else {

@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
     firebase_uid VARCHAR(128) NOT NULL UNIQUE,
     name VARCHAR(120) NOT NULL,
     email VARCHAR(190) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NULL,
     role ENUM('user', 'administrator', 'professional') NOT NULL DEFAULT 'user',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;

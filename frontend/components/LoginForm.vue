@@ -2,6 +2,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { apiUrl } from '../config.js';
+import $ from 'jquery';
 
 const firebaseConfig = {
     apiKey: 'AIzaSyCMqVjbCKVlVfad2P0devEoYPPVg35WOgE',
@@ -24,40 +25,50 @@ export default {
         return { email: '', password: '', captcha: '', captchaQuestion: 'Cargando…', message: '', loading: false };
     },
     async mounted() {
-        try {
-            const response = await fetch(apiUrl('captcha.php'));
-            if (!response.ok) {
-                throw new Error(`Captcha request failed: ${response.status}`);
-            }
-            const result = await response.json();
-            if (!result.pregunta) {
-                throw new Error('Captcha response did not include a question');
-            }
-            this.captchaQuestion = result.pregunta;
-        } catch (error) {
-            console.error(error);
-            this.captchaQuestion = 'No se pudo cargar el captcha. Intente nuevamente.';
-        }
+        $(this.$el).on('submit.pasosLogin', '#login-form', (event) => {
+            event.preventDefault();
+            this.submitLogin();
+        });
+        await this.loadCaptcha();
     },
+    beforeUnmount() { $(this.$el).off('.pasosLogin'); },
     methods: {
+        async loadCaptcha() {
+            this.captcha = '';
+            try {
+                const response = await fetch(apiUrl('captcha.php'));
+                if (!response.ok) {
+                    throw new Error(`Captcha request failed: ${response.status}`);
+                }
+                const result = await response.json();
+                if (!result.pregunta) {
+                    throw new Error('Captcha response did not include a question');
+                }
+                this.captchaQuestion = result.pregunta;
+            } catch (error) {
+                this.captchaQuestion = 'No se pudo cargar el captcha. Intente nuevamente.';
+            }
+        },
         async submitLogin() {
+            if (this.loading) return;
             this.message = '';
             if (!this.email || !this.password || !this.captcha) {
                 this.message = 'Complete el correo electrónico, la contraseña y el captcha.';
                 return;
             }
             this.loading = true;
+            let authenticated = false;
             try {
                 const captchaResponse = await fetch(apiUrl('validar_captcha.php'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: 'captcha=' + encodeURIComponent(this.captcha),
                 });
-                const captchaResult = await captchaResponse.json();
-                if (!captchaResult.correcto) {
-                    this.message = 'Captcha incorrecto.';
-                    return;
+                if (!captchaResponse.ok) {
+                    throw new Error('Captcha request failed');
                 }
+                const captchaResult = await captchaResponse.json();
+                if (captchaResult.correcto !== true) throw new Error('Captcha rejected');
 
                 const userCredential = await signInWithEmailAndPassword(getFirebaseAuth(), this.email, this.password);
                 const user = userCredential.user;
@@ -65,19 +76,22 @@ export default {
                 const sessionResponse = await fetch(apiUrl('crear_sesion.php'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: user.email, uid: user.uid, token }),
+                    body: JSON.stringify({ email: user.email, uid: user.uid, token, password: this.password }),
                 });
+                if (!sessionResponse.ok) throw new Error('Session request failed');
                 const sessionResult = await sessionResponse.json();
                 if (sessionResult.correcto === true) {
+                    authenticated = true;
+                    this.password = '';
                     this.$emit('authenticated', sessionResult.rol);
                     window.location.hash = '#consultations';
                 } else {
                     this.message = 'No fue posible crear la sesión.';
                 }
             } catch (error) {
-                console.error(error);
-                this.message = 'Correo electrónico o contraseña incorrectos.';
+                this.message = 'No fue posible iniciar sesión. Revise los datos e intente nuevamente.';
             } finally {
+                if (!authenticated) await this.loadCaptcha();
                 this.loading = false;
             }
         },
@@ -86,7 +100,8 @@ export default {
 </script>
 
 <template>
-        <form @submit.prevent="submitLogin" class="card shadow-sm p-4">
+    <section>
+        <form id="login-form" class="card shadow-sm p-4">
             <h2 class="h4 mb-3">Iniciar sesión para continuar</h2>
             <label class="form-label" for="email">Correo electrónico</label>
             <input id="email" v-model.trim="email" type="email" class="form-control mb-3" required>
@@ -97,4 +112,5 @@ export default {
             <p v-if="message" class="alert alert-danger">{{ message }}</p>
             <button class="btn btn-primary" :disabled="loading">{{ loading ? 'Iniciando sesión…' : 'Iniciar sesión' }}</button>
         </form>
+    </section>
 </template>

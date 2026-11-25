@@ -183,4 +183,118 @@ app.listeners.get('hashchange')();
 assert.equal(app.window.location.hash, '#consultations?google=connected');
 app.options.beforeUnmount.call(app.state);
 assert.equal(app.listeners.size, 0);
-console.log('PASS: six SFCs compile; imports, session roles, child props, hash navigation and cleanup');
+// Small delegated-event stub: handlers are registered on a stable root, not existing children.
+async function loadComponent(filename, extra = {}) {
+    const handlers = [];
+    const root = {};
+    const rows = [{ id: '7', text: 'Latest consultation', visible: true }, { text: 'Empty', visible: true }];
+    const $ = (element) => ({
+        on(events, selector, callback) {
+            for (const event of events.split(' ')) handlers.push({ element, event, selector, callback });
+            return this;
+        },
+        off(namespace) {
+            for (let i = handlers.length - 1; i >= 0; i--) if (handlers[i].element === element && handlers[i].event.includes(namespace)) handlers.splice(i, 1);
+        },
+        find() { return { each(callback) { rows.forEach((row) => callback.call(row)); } }; },
+        text() { return element.text; },
+        toggle(value) { element.visible = value; },
+    });
+    const context = vm.createContext({ window: { location: { hash: '' } }, console, fetch: async () => ({ ok: true, json: async () => ({ pregunta: '1 + 1', correcto: false }) }), ...extra });
+    const module = new vm.SourceTextModule(compiled.get(filename).script, { context });
+    await module.link(async (specifier) => {
+        let exports = { default: {} };
+        if (specifier === 'jquery') exports = { default: $ };
+        if (specifier.endsWith('config.js')) exports = { apiUrl: (path) => path };
+        if (specifier === '@fullcalendar/core') exports = { Calendar: function () {} };
+        if (specifier === 'firebase/app') exports = { initializeApp: () => ({}), getApps: () => [] };
+        if (specifier === 'firebase/auth') exports = { getAuth: () => ({}), signInWithEmailAndPassword: extra.signIn || (async () => { throw new Error('Offline'); }) };
+        return new vm.SyntheticModule(Object.keys(exports), function () {
+            for (const [key, value] of Object.entries(exports)) this.setExport(key, value);
+        }, { context });
+    });
+    await module.evaluate();
+    const options = module.namespace.default;
+    const emitted = [];
+    const state = { ...(options.data?.() || {}), $el: root, $emit: (...args) => emitted.push(args), consultations: [], role: 'administrator' };
+    for (const [name, method] of Object.entries(options.methods || {})) state[name] = method.bind(state);
+    function fire(type, selector, target = {}) {
+        let prevented = 0;
+        const event = { type, target, currentTarget: target, preventDefault() { prevented++; }, ...target };
+        const matches = handlers.filter((handler) => handler.element === root && handler.event.split('.')[0] === type && handler.selector === selector);
+        for (const handler of matches) handler.callback(event);
+        return { count: matches.length, prevented };
+    }
+    return { options, state, fire, handlers, rows, emitted };
+}
+
+const login = await loadComponent('components/LoginForm.vue');
+let loginSubmits = 0;
+login.state.submitLogin = () => { loginSubmits++; };
+await login.options.mounted.call(login.state);
+assert.equal(login.fire('submit', '#login-form').count, 1, 'Login needs one delegated submit');
+assert.equal(loginSubmits, 1);
+login.options.beforeUnmount.call(login.state);
+assert.equal(login.handlers.length, 0);
+assert.doesNotMatch(readFileSync(resolve(frontend, 'components/LoginForm.vue'), 'utf8'), /@submit/);
+
+const consultations = await loadComponent('views/ConsultationsView.vue');
+for (const name of ['loadConsultations', 'loadGoogleStatus', 'handleGoogleCallback']) consultations.state[name] = () => {};
+let creates = 0, updates = 0;
+consultations.state.submitConsultation = (event) => { event.preventDefault(); creates++; };
+consultations.state.updateConsultation = (event) => { event.preventDefault(); updates++; };
+consultations.options.mounted.call(consultations.state);
+assert.equal(consultations.fire('submit', '#consultation-form').count, 1);
+consultations.state.selected = { id: 7 }; // The update form appears after mounting.
+assert.equal(consultations.fire('submit', '#consultation-update-form').count, 1);
+assert.equal(creates, 1); assert.equal(updates, 1);
+assert.doesNotMatch(readFileSync(resolve(frontend, 'views/ConsultationsView.vue'), 'utf8'), /@submit/);
+consultations.options.beforeUnmount.call(consultations.state);
+assert.equal(consultations.handlers.length, 0);
+
+const table = await loadComponent('components/ConsultationTable.vue');
+table.options.mounted.call(table.state);
+const latest = { id: 7, description: 'Latest data' };
+table.state.consultations = [latest];
+const row = { dataset: { id: '7' } };
+assert.equal(table.fire('click', 'tbody tr[data-id]', row).count, 1);
+assert.equal(table.emitted[0][1], latest);
+for (const key of ['Enter', ' ']) assert.equal(table.fire('keydown', 'tbody tr[data-id]', { ...row, key }).prevented, 1);
+table.fire('keydown', 'tbody tr[data-id]', { ...row, key: 'Tab' });
+table.fire('click', 'tbody tr[data-id]', { dataset: { id: '' } });
+assert.equal(table.emitted.length, 3, 'Ignore unrelated keys and empty/stale rows');
+table.fire('input', '#consultation-filter', { value: 'latest' });
+assert.equal(table.rows[0].visible, true); assert.equal(table.rows[1].visible, false);
+const tableSource = readFileSync(resolve(frontend, 'components/ConsultationTable.vue'), 'utf8');
+assert.doesNotMatch(tableSource, /@click/);
+assert.match(tableSource, /tabindex="0"/); assert.match(tableSource, /role="button"/);
+table.options.beforeUnmount.call(table.state);
+assert.equal(table.handlers.length, 0);
+
+let captchaLoads = 0, signIns = 0, sessionRequests = 0;
+let failAt = 'captcha';
+const flow = await loadComponent('components/LoginForm.vue', {
+    fetch: async (url, request) => {
+        if (url === 'captcha.php') { captchaLoads++; return { ok: true, json: async () => ({ pregunta: '2 + 2' }) }; }
+        if (url === 'crear_sesion.php') {
+            sessionRequests++;
+            assert.equal(JSON.parse(request.body).password, ' untrimmed ');
+        }
+        return { ok: failAt !== (url === 'validar_captcha.php' ? 'captcha' : 'session'), json: async () => ({ correcto: true, rol: 'user' }) };
+    },
+    signIn: async () => { signIns++; return { user: { email: 'user@example.test', uid: '7', getIdToken: async () => 'offline' } }; },
+});
+await flow.options.mounted.call(flow.state);
+for (const failure of ['captcha', 'session', 'none']) {
+    failAt = failure;
+    Object.assign(flow.state, { email: 'user@example.test', password: ' untrimmed ', captcha: '4' });
+    const first = flow.state.submitLogin();
+    await flow.state.submitLogin(); // Busy guard prevents a duplicate in-flight attempt.
+    await first;
+    assert.equal(flow.state.loading, false);
+}
+assert.equal(signIns, 2); assert.equal(sessionRequests, 2);
+assert.equal(captchaLoads, 3, 'Refresh consumed CAPTCHA only after failure, never after success');
+assert.equal(flow.emitted.length, 1, 'HTTP errors must not authenticate despite a success-shaped body');
+assert.equal(flow.state.message, '');
+console.log('PASS: six SFCs, root navigation, delegated jQuery events/cleanup, late forms, accessible selection, login failure/retry');

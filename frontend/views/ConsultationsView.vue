@@ -53,10 +53,10 @@ export default {
         this.loadConsultations();
         this.loadGoogleStatus();
         this.handleGoogleCallback();
-        this.submitHandler = (event) => this.submitConsultation(event);
-        $('#consultation-form').on('submit', this.submitHandler);
+        $(this.$el).on('submit.pasosConsultations', '#consultation-form', (event) => this.submitConsultation(event));
+        $(this.$el).on('submit.pasosConsultations', '#consultation-update-form', (event) => this.updateConsultation(event));
     },
-    beforeUnmount() { $('#consultation-form').off('submit', this.submitHandler); },
+    beforeUnmount() { $(this.$el).off('.pasosConsultations'); },
     updated() {
         this.$nextTick(() => {
             if (this.role === 'professional' && (this.selected && (this.selected.contact_preference === 'phone' || this.selected.contact_preference === 'video'))) {
@@ -314,7 +314,7 @@ export default {
                     <div v-if="selected.contact_preference === 'video'" class="form-text mb-2">El enlace de Google Meet se generará automáticamente al agendar.</div>
                     <button class="btn btn-secondary btn-sm" @click="scheduleConsultation" :disabled="!googleConnected || scheduling">{{ scheduling ? 'Consultando…' : (selected.contact_preference === 'video' && selected.scheduled_at && !selected.meeting_link ? 'Comprobar enlace / reagendar' : 'Agendar') }}</button>
                 </div>
-                <form v-if="(role === 'administrator' || role === 'professional') && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))" id="consultation-update-form" class="mt-3" @submit="updateConsultation">
+                <form v-if="(role === 'administrator' || role === 'professional') && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))" id="consultation-update-form" class="mt-3">
                     <label class="form-label" for="consultation-status">Estado</label>
                     <select id="consultation-status" v-model="updateStatus" class="form-select mb-2">
                         <option v-if="selected.contact_preference !== 'phone' && selected.contact_preference !== 'video'" value="received">Recibida</option>
