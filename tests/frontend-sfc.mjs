@@ -206,7 +206,7 @@ async function loadComponent(filename, extra = {}) {
         let exports = { default: {} };
         if (specifier === 'jquery') exports = { default: $ };
         if (specifier.endsWith('config.js')) exports = { apiUrl: (path) => path };
-        if (specifier === '@fullcalendar/core') exports = { Calendar: function () {} };
+        if (specifier === '@fullcalendar/core') exports = { Calendar: extra.Calendar || function () {} };
         if (specifier === 'firebase/app') exports = { initializeApp: () => ({}), getApps: () => [] };
         if (specifier === 'firebase/auth') exports = { getAuth: () => ({}), signInWithEmailAndPassword: extra.signIn || (async () => { throw new Error('Offline'); }) };
         return new vm.SyntheticModule(Object.keys(exports), function () {
@@ -380,3 +380,55 @@ assert.equal(refresh.state.scheduleDateTime, '2099-12-02T10:00');
 refreshedRows = [];
 await refresh.state.loadConsultations();
 assert.equal(refresh.state.selected, null, 'A removed selection must be cleared');
+
+let calendarOptions;
+const calendarElement = { dataset: {}, querySelectorAll: () => [] };
+const calendar = await loadComponent('views/ConsultationsView.vue', {
+    document: { getElementById: () => calendarElement },
+    Calendar: function (element, options) { calendarOptions = options; this.render = () => {}; },
+});
+Object.assign(calendar.state, { role: 'professional', selected: { id: 7, contact_preference: 'video' }, $nextTick: (callback) => callback() });
+calendar.options.updated.call(calendar.state);
+for (const dateStr of ['2099-12-01', '2099-12-01T10:30:00-03:00']) {
+    calendarOptions.dateClick({ dateStr, dayEl: { style: {} } });
+    assert.equal(calendar.state.selectedDate, '2099-12-01');
+    calendar.state.selectTime('09:30');
+    assert.equal(calendar.state.scheduleDateTime, '2099-12-01T09:30');
+}
+
+const noteRequests = [];
+const notes = await loadComponent('views/ConsultationsView.vue', {
+    fetch: async (url, options) => {
+        if (options?.method === 'PUT') noteRequests.push(JSON.parse(options.body));
+        return { ok: true, json: async () => ({ correcto: true, consultations: [] }) };
+    },
+});
+for (const role of ['professional', 'administrator']) {
+    for (const preference of ['phone', 'video', 'email']) {
+        Object.assign(notes.state, { role, selected: { id: 7, contact_preference: preference, status: 'closed' }, professionalNote: 'Review note', updateStatus: 'closed' });
+        await notes.state.updateConsultation({ preventDefault() {} });
+        assert.deepEqual(noteRequests.at(-1), role === 'professional' && preference !== 'email'
+            ? { professional_note: 'Review note' } : { status: 'closed', professional_note: 'Review note' });
+    }
+}
+const noteSource = readFileSync(resolve(frontend, 'views/ConsultationsView.vue'), 'utf8');
+assert.doesNotMatch(noteSource, /v-html/);
+assert.match(noteSource, /\{\{\s*selected\.professional_note\s*\}\}/);
+
+// Compile and execute the actual detail template for owner and professional roles.
+const noteContext = vm.createContext({});
+const noteTemplate = new vm.SourceTextModule(compiled.get('views/ConsultationsView.vue').template, { context: noteContext });
+await noteTemplate.link(async () => new vm.SyntheticModule(Object.keys(vue), function () {
+    for (const [name, value] of Object.entries(vue)) this.setExport(name, name === 'resolveComponent' ? () => ({ name: 'ConsultationTable' }) : name === 'withDirectives' ? (node) => node : value);
+}, { context: noteContext }));
+await noteTemplate.evaluate();
+function nodes(node) { return !node || typeof node !== 'object' ? [] : [node, ...(Array.isArray(node.children) ? node.children.flatMap(nodes) : [])]; }
+for (const role of ['user', 'professional']) {
+    Object.assign(notes.state, { role, selected: { id: 7, contact_preference: 'video', status: 'closed', professional_note: '<img src=x onerror=alert(1)>' } });
+    const rendered = nodes(noteTemplate.namespace.render(notes.state, [], { role }, {}, notes.state, notes.state));
+    assert.ok(rendered.some((node) => typeof node.children === 'string' && node.children.includes(notes.state.selected.professional_note)), 'Existing note must render as text');
+    assert.ok(rendered.every((node) => !node.props?.innerHTML), 'Notes must never render as HTML');
+    assert.equal(rendered.some((node) => node.props?.id === 'consultation-update-form'), role === 'professional');
+    assert.equal(rendered.some((node) => node.props?.id === 'consultation-status'), false, 'No broad status control for phone/video professionals');
+}
+console.log('PASS: actual Calendar callback day normalization, note-only update payloads and escaped owner detail');

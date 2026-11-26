@@ -38,7 +38,11 @@ class ConsultationFakeStatement {
     function execute() {
         $this->db->log[] = $this->sql;
         $s = $this->sql; $v = $this->values;
-        if (strpos($s, 'SELECT phone') === 0) $this->rows = [['phone' => $this->db->phone]];
+        if (strpos($s, 'SELECT google_email') === 0) {
+            assert($s === 'SELECT google_email FROM google_oauth_tokens WHERE user_id = ? LIMIT 1' && $v === [3], 'Lookup must use only the authenticated professional ID and fetch no tokens');
+            $this->rows = $this->db->googleEmail === null ? [] : [['google_email' => $this->db->googleEmail]];
+        }
+        elseif (strpos($s, 'SELECT phone') === 0) $this->rows = [['phone' => $this->db->phone]];
         elseif (strpos($s, 'SELECT professional_id') === 0) $this->rows = [['professional_id' => 3]];
         elseif (strpos($s, 'SELECT id FROM users') === 0) $this->rows = [['id' => 3]];
         elseif (strpos($s, 'SELECT c.*') === 0 || strpos($s, 'SELECT id, user_id') === 0 || strpos($s, 'SELECT id, scheduled_at') === 0) $this->rows = [$this->db->row];
@@ -59,6 +63,7 @@ class ConsultationFakeStatement {
     function close() {}
 }
 class ConsultationFakeDb {
+    public $googleEmail = 'google+b@example.test';
     public $log = []; public $phone = null; public $failInsert = false; public $snapshot; public $row; public $busy = []; public $saved; public $created;
     function prepare($sql) { return new ConsultationFakeStatement($this, $sql); }
     function begin_transaction() { $this->log[] = 'BEGIN'; $this->snapshot = $this->phone; return true; }
@@ -72,11 +77,15 @@ if (($argv[1] ?? '') === 'endpoint') {
     $conexion->row = $row + ['user_email' => 'owner@example.test', 'description' => 'Private', 'professional_note' => null, 'requested_at' => '2026-11-30 09:00:00'];
     $current = new DateTimeImmutable('now', $zone);
     $conexion->row['scheduled_at'] = $current->modify('-5 minutes')->format('Y-m-d H:i:s');
-    $_SESSION = ['autenticado' => true, 'usuario_id' => 1, 'rol' => 'user'];
+    $_SESSION = ['autenticado' => true, 'usuario_id' => 1, 'rol' => 'user', 'usuario' => 'firebase+a@example.test'];
     $_SERVER = ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/api/consultations.php/7'];
     $_GET = ['id' => '7'];
     if (strpos($case, 'unauthorized') !== false) $_SESSION = ['autenticado' => true, 'usuario_id' => 4, 'rol' => 'professional'];
     if (strpos($case, 'admin') !== false) $_SESSION['rol'] = 'administrator';
+    if (strpos($case, 'professional') !== false) { $_SESSION['rol'] = 'professional'; $_SESSION['usuario_id'] = 3; }
+    if (strpos($case, 'missing') !== false) $conexion->googleEmail = null;
+    if (strpos($case, 'invalid-email') !== false) $conexion->googleEmail = "invalid\r\nX-Header: bad";
+    if (strpos($case, 'query') !== false) $conexion->row['meeting_link'] .= '?existing=1';
     if (strpos($case, 'closed') !== false) $conexion->row['status'] = 'closed';
     if (strpos($case, 'expired') !== false) $conexion->row['scheduled_at'] = $current->modify('-31 minutes')->format('Y-m-d H:i:s');
     if (strpos($case, 'early') !== false) $conexion->row['scheduled_at'] = $current->modify('+5 minutes')->format('Y-m-d H:i:s');
@@ -85,7 +94,7 @@ if (($argv[1] ?? '') === 'endpoint') {
     $source = file_get_contents(__DIR__ . '/../backend/api/' . $file);
     $source = preg_replace('/^<\?php\s*|session_start\(\);|^require_once .*;$/m', '', $source);
     // The real endpoint executes unchanged except its external boundaries and redirect capture.
-    $source = str_replace("header('Location: ' . \$meeting['meeting_link'], true, 302);", "http_response_code(302); echo json_encode(['redirect' => \$meeting['meeting_link']]);", $source);
+    $source = str_replace("header('Location: ' . \$link, true, 302);", "http_response_code(302); echo json_encode(['redirect' => \$link]);", $source);
     register_shutdown_function(function () { echo "\nSTATUS:" . http_response_code(); });
     eval($source);
     exit;
@@ -95,6 +104,8 @@ foreach ([
     'item-unauthorized' => 403, 'item-admin-expired' => 200, 'video-admin-expired' => 200,
     'join-owner' => 302, 'join-closed' => 403, 'join-expired' => 403, 'join-early' => 403,
     'join-unauthorized' => 403, 'join-unsafe' => 403,
+    'join-professional' => 302, 'join-professional-missing' => 302,
+    'join-professional-query' => 302, 'join-professional-invalid-email' => 302,
 ] as $case => $status) {
     $pipes = [];
     $process = proc_open([PHP_BINARY, '-d', 'zend.assertions=1', '-d', 'assert.exception=1', __FILE__, 'endpoint', $case], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
@@ -104,6 +115,14 @@ foreach ([
     assert(substr($output, -strlen('STATUS:' . $status)) === 'STATUS:' . $status, $case . ': ' . $output . $errors);
     if ($status !== 302) assert(strpos($output, 'https://meet.google.com') === false, 'Closed/expired/unauthorized serialization leaked link');
     if ($case === 'item-unauthorized') assert(strpos($output, '+549') === false, 'Unrelated professional leaked phone');
+    if ($status === 302) {
+        $link = json_decode(explode("\nSTATUS:", $output)[0], true)['redirect'];
+        $expected = 'https://meet.google.com/abc-defg-hij';
+        if ($case === 'join-owner') $expected .= '?authuser=firebase%2Ba%40example.test';
+        if ($case === 'join-professional-query') $expected .= '?existing=1&authuser=google%2Bb%40example.test';
+        if ($case === 'join-professional') $expected .= '?authuser=google%2Bb%40example.test';
+        assert($link === $expected, 'Redirect must use the correct Google account: ' . $link);
+    }
 }
 
 $db = new ConsultationFakeDb();
@@ -163,6 +182,16 @@ assert($remoteCalls === $callsBeforeEmail, 'Email review must never create a Goo
 foreach (['phone', 'video'] as $preference) {
     $db->row['contact_preference'] = $preference;
     $db->row['status'] = 'received';
+    $db->row['scheduled_at'] = null;
     try { consultation_update($db, 7, 3, 'professional', ['status' => 'scheduled'], $remote, $now); assert(false); } catch (InvalidArgumentException $e) {}
+    $db->row['scheduled_at'] = '2026-12-01 09:00:00';
+    $db->busy = [];
+    foreach (['received', 'scheduled', 'closed'] as $state) {
+        $db->row['status'] = $state;
+        $previous = $db->row['scheduled_at'];
+        consultation_update($db, 7, 3, 'professional', ['professional_note' => 'Assigned review'], $remote, $now);
+        assert($db->saved[0] === 'Assigned review' && $db->saved[1] === $state && $db->saved[2] === $previous);
+        try { consultation_update($db, 7, 4, 'professional', ['professional_note' => 'Not assigned'], $remote, $now); assert(false); } catch (DomainException $e) {}
+    }
 }
 echo "PASS: phone validation/reuse/rollback, privacy, strict Buenos Aires dates, join boundaries, transaction flow, overlap/adjacent/self/retry/closed/admin\n";

@@ -29,6 +29,12 @@ try {
     if (!$meeting['can_join']) denyMeeting(403);
     $link = $meeting['meeting_link'];
     $email = isset($_SESSION['usuario']) ? html_entity_decode((string) $_SESSION['usuario'], ENT_QUOTES, 'UTF-8') : '';
+    if (($_SESSION['rol'] ?? 'user') === 'professional') {
+        $stmt = consultation_query($conexion, 'SELECT google_email FROM google_oauth_tokens WHERE user_id = ? LIMIT 1', 'i', [(int) $_SESSION['usuario_id']]);
+        $binding = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        $email = $binding['google_email'] ?? '';
+    }
     if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $separator = str_contains($link, '?') ? '&' : '?';
         $link .= $separator . 'authuser=' . rawurlencode($email);

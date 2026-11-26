@@ -48,15 +48,16 @@ CREATE TABLE IF NOT EXISTS google_oauth_tokens (
     CONSTRAINT fk_google_oauth_user FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- Demo administrator: create this email in Firebase Authentication. On first
--- login, crear_sesion.php replaces the placeholder UID with Firebase's real UID.
+-- Before first import, replace privileged placeholders with trusted UIDs copied
+-- from Firebase Authentication's console after administrator-controlled creation.
+-- Pending privileged records cannot log in; collisions never change existing users.
 INSERT INTO users (firebase_uid, name, email, role)
 VALUES ('replace-with-firebase-uid', 'Demo administrator', 'admin@pasos.test', 'administrator')
-ON DUPLICATE KEY UPDATE role = 'administrator';
+ON DUPLICATE KEY UPDATE id = id;
 
 INSERT INTO users (firebase_uid, name, email, role)
 VALUES ('pending-abogadopasos', 'Abogado PASOS', 'abogadopasos@gmail.com', 'professional')
-ON DUPLICATE KEY UPDATE name = VALUES(name), role = 'professional';
+ON DUPLICATE KEY UPDATE id = id;
 
 INSERT INTO users (firebase_uid, name, email, role)
 VALUES ('pending-pasoscliente', 'PASOS client', 'pasoscliente@gmail.com', 'user')

@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/lib/RequestGuard.php';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') pasos_require_write(true);
 session_start();
 header('Content-Type: application/json; charset=utf-8');
 
@@ -15,6 +17,7 @@ if (empty($_SESSION['captcha_validado'])) {
     echo json_encode(['correcto' => false, 'mensaje' => 'Captcha must be validated first.']);
     exit;
 }
+unset($_SESSION['captcha_validado']);
 
 $datos = json_decode(file_get_contents('php://input'), true);
 if (!is_array($datos)) {
@@ -49,24 +52,28 @@ $statement->execute();
 $statement->bind_result($storedUid, $storedRole, $storedHash);
 $emailFound = $statement->fetch();
 $statement->close();
+$pendingUid = $emailFound && ($storedUid === 'replace-with-firebase-uid' || strpos($storedUid, 'pending-') === 0);
+if ($pendingUid && $storedRole !== 'user') {
+    http_response_code(403);
+    echo json_encode(['correcto' => false, 'mensaje' => 'Account setup required. Contact the administrator.']);
+    exit;
+}
+if ($emailFound && $storedUid !== $uid && !$pendingUid) {
+    http_response_code(409);
+    echo json_encode(['correcto' => false, 'mensaje' => 'Email is already linked to another Firebase user.']);
+    exit;
+}
 $passwordHash = firebase_password_hash($datos['password'], $emailFound ? $storedHash : null);
 unset($datos['password']);
 
 if ($emailFound && $storedUid !== $uid) {
-    if (($storedUid === 'replace-with-firebase-uid' && $storedRole === 'administrator') ||
-        (strpos($storedUid, 'pending-') === 0)) {
-        $statement = $conexion->prepare('UPDATE users SET firebase_uid = ?, name = ?, password_hash = ? WHERE email = ?');
-        if (!$statement) {
-            http_response_code(500);
-            echo json_encode(['correcto' => false, 'mensaje' => 'Could not prepare user update.']);
-            exit;
-        }
-        $statement->bind_param('ssss', $uid, $name, $passwordHash, $email);
-    } else {
-        http_response_code(409);
-        echo json_encode(['correcto' => false, 'mensaje' => 'Email is already linked to another Firebase user.']);
+    $statement = $conexion->prepare('UPDATE users SET firebase_uid = ?, name = ?, password_hash = ? WHERE email = ?');
+    if (!$statement) {
+        http_response_code(500);
+        echo json_encode(['correcto' => false, 'mensaje' => 'Could not prepare user update.']);
         exit;
     }
+    $statement->bind_param('ssss', $uid, $name, $passwordHash, $email);
 } else {
     $statement = $conexion->prepare(
         'INSERT INTO users (firebase_uid, name, email, password_hash) VALUES (?, ?, ?, ?)
@@ -116,6 +123,4 @@ $_SESSION['usuario_id'] = $userId;
 $_SESSION['usuario'] = htmlspecialchars($storedEmail, ENT_QUOTES, 'UTF-8');
 $_SESSION['nombre'] = htmlspecialchars($storedName, ENT_QUOTES, 'UTF-8');
 $_SESSION['rol'] = $role;
-unset($_SESSION['captcha_validado']);
-
 echo json_encode(['correcto' => true, 'rol' => $role]);

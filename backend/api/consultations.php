@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../lib/RequestGuard.php';
+if (in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT'], true)) pasos_require_write(true);
 session_start();
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');

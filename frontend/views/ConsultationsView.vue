@@ -84,8 +84,8 @@ export default {
                             center: 'title',
                             right: 'dayGridMonth,timeGridWeek,timeGridDay'
                         },
-                                        dateClick: (info) => {
-                            this.selectedDate = info.dateStr;
+                        dateClick: (info) => {
+                            this.selectedDate = info.dateStr.substring(0, 10);
                             this.scheduleTime = '';
                             this.scheduleDateTime = '';
                             calEl.querySelectorAll('.fc-daygrid-day').forEach(d => d.style.backgroundColor = '');
@@ -188,10 +188,12 @@ export default {
         },
         async updateConsultation(event) {
             event.preventDefault();
+            const payload = { professional_note: this.professionalNote };
+            if (this.role !== 'professional' || !['phone', 'video'].includes(this.selected.contact_preference)) payload.status = this.updateStatus;
             const result = await requestJson(apiUrl(`api/consultations.php/${this.selected.id}`), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: this.updateStatus, professional_note: this.professionalNote }),
+                body: JSON.stringify(payload),
             }, 'No se pudo actualizar la consulta.');
             this.message = result.correcto ? 'Consulta actualizada.' : (result.mensaje || 'No se pudo actualizar la consulta.');
             if (result.correcto) {
@@ -317,6 +319,7 @@ export default {
             <consultation-table :consultations="consultations" @select="selectConsultation"></consultation-table>
             <article v-if="selected" class="alert alert-secondary mt-3">
                 <strong>Consulta seleccionada:</strong> {{ selected.description }}<br>
+                <p v-if="selected.professional_note" class="mt-2">Nota del profesional: {{ selected.professional_note }}</p>
                 <span v-if="!(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Preferencia de contacto: {{ getContactLabel(selected.contact_preference) }}</span><br v-if="!(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
                 <span v-if="!(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Estado: {{ getStatusLabel(selected.status) }}</span><br v-if="!(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
                 <span v-if="selected.scheduled_at && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">Fecha/hora: {{ selected.scheduled_at }}</span><br v-if="selected.scheduled_at && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))">
@@ -325,7 +328,7 @@ export default {
                     <span v-else :class="['Videollamada finalizada', 'Disponible en la fecha y hora agendada (Buenos Aires)'].includes(meetingLabel(selected)) ? 'text-white' : 'text-muted'" role="status">{{ meetingLabel(selected) }}</span>
                 </div>
                 <div v-if="role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video')" class="mt-3">
-                    <label class="form-label">Agendar cita con calendario</label>
+                    <label class="form-label">Agendar cita con calendario (hora de Buenos Aires)</label>
                     <div class="mb-2 p-2 border rounded" style="background:#fff;">
                         <div v-if="googleStatusMessage" class="alert alert-info py-2 mb-2">{{ googleStatusMessage }}</div>
                         <div v-if="!googleConfigured" class="alert alert-warning py-2 mb-2">
@@ -350,7 +353,8 @@ export default {
                     <div v-if="selected.contact_preference === 'video'" class="form-text mb-2">El enlace de Google Meet se generará automáticamente al agendar.</div>
                     <button class="btn btn-secondary btn-sm" @click="scheduleConsultation" :disabled="!googleConnected || scheduling">{{ scheduling ? 'Consultando…' : (selected.contact_preference === 'video' && selected.scheduled_at && !selected.meeting_link ? 'Comprobar enlace / reagendar' : 'Agendar') }}</button>
                 </div>
-                <form v-if="(role === 'administrator' || role === 'professional') && !(role === 'professional' && (selected.contact_preference === 'phone' || selected.contact_preference === 'video'))" id="consultation-update-form" class="mt-3">
+                <form v-if="role === 'administrator' || role === 'professional'" id="consultation-update-form" class="mt-3">
+                    <template v-if="role !== 'professional' || (selected.contact_preference !== 'phone' && selected.contact_preference !== 'video')">
                     <label class="form-label" for="consultation-status">Estado</label>
                     <select id="consultation-status" v-model="updateStatus" class="form-select mb-2">
                         <option v-if="selected.contact_preference !== 'phone' && selected.contact_preference !== 'video'" value="received">Recibida</option>
@@ -359,6 +363,7 @@ export default {
                         <option v-if="(selected.contact_preference === 'phone' || selected.contact_preference === 'video') && selected.scheduled_at" value="closed">Cerrada</option>
                         <option v-if="selected.contact_preference !== 'phone' && selected.contact_preference !== 'video'" value="closed">Cerrada</option>
                     </select>
+                    </template>
                     <label class="form-label" for="professional-note">Nota del profesional</label>
                     <textarea id="professional-note" v-model.trim="professionalNote" class="form-control mb-2" rows="3" maxlength="3000"></textarea>
                     <button class="btn btn-secondary">Actualizar consulta</button>

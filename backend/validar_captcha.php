@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/lib/RequestGuard.php';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') pasos_require_write();
 session_start();
 header('Content-Type: application/json; charset=utf-8');
 
