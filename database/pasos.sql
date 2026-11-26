@@ -48,9 +48,9 @@ CREATE TABLE IF NOT EXISTS google_oauth_tokens (
     CONSTRAINT fk_google_oauth_user FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- Before first import, replace privileged placeholders with trusted UIDs copied
--- from Firebase Authentication's console after administrator-controlled creation.
--- Pending privileged records cannot log in; collisions never change existing users.
+
+
+
 INSERT INTO users (firebase_uid, name, email, role)
 VALUES ('replace-with-firebase-uid', 'Demo administrator', 'admin@pasos.test', 'administrator')
 ON DUPLICATE KEY UPDATE id = id;

@@ -52,7 +52,7 @@ function firebase_verify_login(array $input, array $config, ?callable $transport
             (array_key_exists('disabled', $user) && $user['disabled'] !== false)) {
             throw new RuntimeException();
         }
-        // Google authenticates the token above; decoding alone is never identity proof.
+
         $parts = explode('.', $input['token']);
         if (count($parts) !== 3 || !preg_match('/^[A-Za-z0-9_-]+$/', $parts[1])) {
             throw new RuntimeException();
@@ -96,7 +96,7 @@ function firebase_verify_login(array $input, array $config, ?callable $transport
         }
         return $identity;
     } catch (Throwable $error) {
-        // Do not propagate Google responses, URLs, passwords or tokens.
+
         throw new RuntimeException('Could not verify Firebase credentials.');
     }
 }
@@ -104,7 +104,7 @@ function firebase_verify_login(array $input, array $config, ?callable $transport
 function firebase_password_hash(string $password, ?string $stored): string
 {
     $algorithm = defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_BCRYPT;
-    // SHA-384/base64 keeps every password byte significant within bcrypt's 72-byte limit.
+
     $bcryptInput = base64_encode(hash('sha384', $password, true));
     $material = $algorithm === PASSWORD_BCRYPT ? $bcryptInput : $password;
     $storedMaterial = $stored && password_get_info($stored)['algoName'] === 'bcrypt' ? $bcryptInput : $password;

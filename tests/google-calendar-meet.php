@@ -1,6 +1,6 @@
 <?php
 
-// Fail before loading the old helper, which eagerly connects to MySQL.
+
 $source = file_get_contents(__DIR__ . '/../backend/lib/GoogleCalendarMeet.php');
 assert(strpos($source, 'function google_sync_calendar_event(') !== false, 'Offline Calendar transport seam is missing.');
 require_once __DIR__ . '/../backend/lib/GoogleCalendarMeet.php';

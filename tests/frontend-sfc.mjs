@@ -183,7 +183,7 @@ app.listeners.get('hashchange')();
 assert.equal(app.window.location.hash, '#consultations?google=connected');
 app.options.beforeUnmount.call(app.state);
 assert.equal(app.listeners.size, 0);
-// Small delegated-event stub: handlers are registered on a stable root, not existing children.
+
 async function loadComponent(filename, extra = {}) {
     const handlers = [];
     const root = {};
@@ -245,7 +245,7 @@ consultations.state.submitConsultation = (event) => { event.preventDefault(); cr
 consultations.state.updateConsultation = (event) => { event.preventDefault(); updates++; };
 consultations.options.mounted.call(consultations.state);
 assert.equal(consultations.fire('submit', '#consultation-form').count, 1);
-consultations.state.selected = { id: 7 }; // The update form appears after mounting.
+consultations.state.selected = { id: 7 };
 assert.equal(consultations.fire('submit', '#consultation-update-form').count, 1);
 assert.equal(creates, 1); assert.equal(updates, 1);
 assert.doesNotMatch(readFileSync(resolve(frontend, 'views/ConsultationsView.vue'), 'utf8'), /@submit/);
@@ -289,7 +289,7 @@ for (const failure of ['captcha', 'session', 'none']) {
     failAt = failure;
     Object.assign(flow.state, { email: 'user@example.test', password: ' untrimmed ', captcha: '4' });
     const first = flow.state.submitLogin();
-    await flow.state.submitLogin(); // Busy guard prevents a duplicate in-flight attempt.
+    await flow.state.submitLogin();
     await first;
     assert.equal(flow.state.loading, false);
 }
@@ -415,7 +415,7 @@ const noteSource = readFileSync(resolve(frontend, 'views/ConsultationsView.vue')
 assert.doesNotMatch(noteSource, /v-html/);
 assert.match(noteSource, /\{\{\s*selected\.professional_note\s*\}\}/);
 
-// Compile and execute the actual detail template for owner and professional roles.
+
 const noteContext = vm.createContext({});
 const noteTemplate = new vm.SourceTextModule(compiled.get('views/ConsultationsView.vue').template, { context: noteContext });
 await noteTemplate.link(async () => new vm.SyntheticModule(Object.keys(vue), function () {

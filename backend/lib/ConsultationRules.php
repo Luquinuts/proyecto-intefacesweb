@@ -109,12 +109,12 @@ function consultation_create($db, int $userId, string $role, array $data): int
 function consultation_update($db, int $id, int $userId, string $role, array $data, ?callable $sync = null, ?DateTimeImmutable $now = null): array
 {
     if (!in_array($role, ['professional', 'administrator'], true)) throw new DomainException('Not authorized.');
-    // The mutex protects overlap checks; avoid range gap locks across other professionals.
+
     $isolation = consultation_query($db, 'SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
     $isolation->close();
     if (!$db->begin_transaction()) throw new RuntimeException('Transaction failed.');
     try {
-        // Discover the mutex ID only; read mutable consultation data after the mutex.
+
         $stmt = consultation_query($db, 'SELECT professional_id FROM consultations WHERE id = ?', 'i', [$id]);
         $initial = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -162,7 +162,7 @@ function consultation_update($db, int $id, int $userId, string $role, array $dat
             if (!$professional || !$scheduledAt) throw new InvalidArgumentException('La consulta necesita profesional y fecha.');
             $start = consultation_start(substr(str_replace(' ', 'T', $scheduledAt), 0, 16));
             $end = $start->modify('+30 minutes')->format('Y-m-d H:i:s');
-            // The professional mutex serializes writers; READ COMMITTED avoids cross-professional range locks.
+
             $stmt = consultation_query($db, "SELECT id FROM consultations WHERE professional_id = ? AND id != ? AND status = 'scheduled' AND contact_preference IN ('phone', 'video') AND scheduled_at < ? AND DATE_ADD(scheduled_at, INTERVAL 30 MINUTE) > ? LIMIT 1", 'iiss', [$professionalId, $id, $end, $scheduledAt]);
             $conflict = $stmt->get_result()->fetch_assoc();
             $stmt->close();

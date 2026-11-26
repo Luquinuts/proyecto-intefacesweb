@@ -1,4 +1,4 @@
--- Migración para integración Google Calendar / Google Meet
+
 USE pasos;
 
 CREATE TABLE IF NOT EXISTS google_oauth_tokens (

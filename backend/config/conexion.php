@@ -18,6 +18,3 @@ if ($conexion->connect_errno) {
 }
 
 $conexion->set_charset('utf8mb4');
-
-// The course still requires a password_hash() decision. Firebase remains the
-// only credential store in this MVP; no duplicate local password is added.

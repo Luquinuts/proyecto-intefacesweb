@@ -1,6 +1,6 @@
 <?php
 
-// Explicit opt-in only; never load the application's default pasos connection.
+
 $database = getenv('PASOS_CONCURRENCY_DB') ?: '';
 if (getenv('PASOS_CONCURRENCY_ALLOW') !== '1' || !preg_match('/^pasos_test_[a-zA-Z0-9_]+$/D', $database)) {
     fwrite(STDERR, "UNAVAILABLE: set PASOS_CONCURRENCY_ALLOW=1 and PASOS_CONCURRENCY_DB=pasos_test_<disposable>, with the migrated schema already installed. No connection made.\n");

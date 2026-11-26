@@ -1,7 +1,7 @@
 <?php
 
-// Copia este archivo como google.local.php y completa tus credenciales.
-// NO subas google.local.php al repositorio.
+
+
 
 return [
     'client_id' => 'TU_CLIENT_ID.apps.googleusercontent.com',

@@ -1,6 +1,6 @@
 <?php
 
-// Run the actual write endpoints with forbidden external boundaries replaced.
+
 $endpoints = ['crear_sesion.php', 'api/consultations.php', 'validar_captcha.php', 'cerrar_sesion.php'];
 $cases = [
     ['https://evil.test', 'application/json', 403],
@@ -36,7 +36,7 @@ foreach ($endpoints as $endpoint) {
                 . ($origin === null ? '' : '$_SERVER["HTTP_ORIGIN"] = ' . var_export($origin, true) . ';')
                 . '$_SESSION = ["sentinel" => 1];'
                 . 'register_shutdown_function(function () { assert($_SESSION === ["sentinel" => 1]); echo "\nSTATUS:" . http_response_code(); });';
-            // For accepted requests stop immediately after the real shared guard, before endpoint work.
+
             if ($expected === 0) {
                 $source = preg_replace('/(pasos_require_write\([^;]*;)/', '$1 echo "ACCEPTED"; exit;', $source);
             }

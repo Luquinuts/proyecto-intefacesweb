@@ -94,7 +94,7 @@ function google_refresh_access_token(mysqli $conexion, int $userId): array
         return ['ok' => false, 'error' => 'No hay refresh token de Google. El abogado debe volver a conectar su cuenta.'];
     }
 
-    // The token endpoint expects form-encoded data.
+
     $ch = curl_init($config['token_uri']);
     $payload = http_build_query([
         'client_id' => $config['client_id'],
@@ -230,7 +230,7 @@ function google_sync_calendar_event(string $accessToken, string $calendarId, int
     }
     $request = $request ?? 'google_http_json';
     $config = pasos_google_config();
-    // Stable identity survives uncertain inserts and a failed local database save.
+
     $eventId = $eventData['event_id'] ?? hash('sha256', $config['client_id'] . ':' . $userId . ':' . $eventData['consultation_id']);
     $url = $config['calendar_api_base'] . '/calendars/' . rawurlencode($calendarId) . '/events';
     $eventUrl = $url . '/' . rawurlencode($eventId);
@@ -240,7 +240,7 @@ function google_sync_calendar_event(string $accessToken, string $calendarId, int
 
     $body = [
         'summary' => $eventData['summary'] ?? 'Consulta PASOS',
-        // Invitations must never contain the private case text or phone.
+
         'description' => '',
         'attendees' => [['email' => $eventData['owner_email']]],
         'extendedProperties' => ['private' => ['pasosOwnerEmail' => $eventData['owner_email']]],
@@ -287,7 +287,7 @@ function google_sync_calendar_event(string $accessToken, string $calendarId, int
         $previousOwner = $properties['private']['pasosOwnerEmail'] ?? '';
         foreach ($response['data']['attendees'] ?? [] as $attendee) {
             $key = strtolower($attendee['email'] ?? '');
-            // shortcut: unmarked legacy invitees cannot be attributed; reconcile those manually.
+
             if ($previousOwner !== '' && strtolower($previousOwner) !== $ownerKey && $key === strtolower($previousOwner)) continue;
             if ($key !== '' && !isset($seen[$key])) {
                 $attendees[] = $attendee;

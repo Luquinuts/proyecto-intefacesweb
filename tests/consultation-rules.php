@@ -30,7 +30,7 @@ foreach (['http://meet.google.com/abc', 'https://meet.google.com.evil.test/abc',
     assert(!consultation_meeting(array_replace($row, ['meeting_link' => $bad]), $now)['can_join']);
 }
 
-// SQL-shaped fake executes the shared transaction flow; it is not a MySQL lock proof.
+
 class ConsultationFakeStatement {
     public $db; public $sql; public $values = []; public $rows = []; public $insert_id = 8;
     function __construct($db, $sql) { $this->db = $db; $this->sql = $sql; }
@@ -93,7 +93,7 @@ if (($argv[1] ?? '') === 'endpoint') {
     $file = strpos($case, 'join') === 0 ? 'join_meeting.php' : (strpos($case, 'video') === 0 ? 'videocall.php' : 'consultations.php');
     $source = file_get_contents(__DIR__ . '/../backend/api/' . $file);
     $source = preg_replace('/^<\?php\s*|session_start\(\);|^require_once .*;$/m', '', $source);
-    // The real endpoint executes unchanged except its external boundaries and redirect capture.
+
     $source = str_replace("header('Location: ' . \$link, true, 302);", "http_response_code(302); echo json_encode(['redirect' => \$link]);", $source);
     register_shutdown_function(function () { echo "\nSTATUS:" . http_response_code(); });
     eval($source);
@@ -165,7 +165,7 @@ $lastBegin = array_search('BEGIN', array_reverse($db->log, true));
 $flow = array_slice($db->log, $lastBegin);
 assert(strpos($flow[2], 'users') !== false && strpos($flow[2], 'FOR UPDATE') !== false);
 assert(strpos($flow[3], 'c.*') !== false && strpos($flow[3], 'FOR UPDATE') !== false, 'Professional mutex precedes fresh consultation lock');
-// Administrator reopening also uses the overlap check before any remote mutation.
+
 $db->row['status'] = 'under_review';
 $db->busy = [array_replace($row, ['id' => 9])];
 try { consultation_update($db, 7, 2, 'administrator', ['status' => 'scheduled'], $remote, $now->modify('-1 day')); assert(false); } catch (InvalidArgumentException $e) {}

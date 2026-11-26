@@ -79,7 +79,7 @@ assert(firebase_password_hash(trim($password), $hash) !== $hash, 'Whitespace rem
 $oldHash = password_hash(base64_encode(hash('sha384', $password, true)), PASSWORD_BCRYPT, ['cost' => 4]);
 assert(firebase_password_hash($password, $oldHash) !== $oldHash, 'Upgrade obsolete cost');
 
-// Execute the actual endpoint with only I/O boundaries replaced; rejected proof must never reach SQL.
+
 $source = file_get_contents(__DIR__ . '/../backend/crear_sesion.php');
 foreach (['token', 'password', 'spoof', 'types'] as $failure) {
     $badInput = $input;
@@ -104,7 +104,7 @@ foreach (['token', 'password', 'spoof', 'types'] as $failure) {
     assert(strpos($output, $input['token']) === false && strpos($output, $input['password']) === false);
 }
 
-// Exercise stored-role/UID decisions in the endpoint, without a database or network.
+
 foreach ([
     ['pending-pro', 'professional', 'verified-uid', 403, false],
     ['replace-with-firebase-uid', 'administrator', 'verified-uid', 403, false],

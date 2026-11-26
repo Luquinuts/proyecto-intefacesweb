@@ -12,7 +12,7 @@ function pasos_write_origin(string $url, bool $configured = false): ?string
     return $scheme . '://' . strtolower($parts['host']) . (($scheme === 'https' && $port === 443) || ($scheme === 'http' && $port === 80) ? '' : ':' . $port);
 }
 
-// One procedural boundary for session and consultation writes; no private OAuth config is loaded.
+
 function pasos_require_write(bool $json = false): void
 {
     $allowed = ['http://localhost', 'http://127.0.0.1', 'http://localhost:5174', 'http://127.0.0.1:5174'];
