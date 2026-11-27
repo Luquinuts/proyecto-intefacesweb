@@ -28,7 +28,7 @@ The repository will contain the course project proposal and, after scope confirm
 
 ## Local development
 
-For the private classroom ZIP, follow [Google Calendar/Meet setup](docs/google-calendar-meet-setup.md). Extract its `proyecto-intefacesweb-develop/` folder under XAMPP's `htdocs`, start Apache/MySQL, and import `database/pasos.sql` through phpMyAdmin. Use Node.js 22.12+ and npm. From the extracted project:
+Extract the classroom ZIP into a private folder **outside any webroot**; its roots are `frontend/`, `backend/`, and `pasos.sql`. Keep MySQL running separately and import root `pasos.sql` only into a fresh classroom setup. A Git checkout instead uses `database/pasos.sql` and requires trusted privileged account setup. Never import over working data. Use Node.js 22.12+, npm and PHP CLI with mysqli/cURL (XAMPP includes PHP). From the project:
 
 ```bash
 cd frontend
@@ -36,11 +36,17 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5174/`. Vite uses strict port 5174 and proxies `/backend` to `http://localhost/proyecto-intefacesweb-develop`, matching the documented Apache folder. If the port is occupied, stop this project's previous frontend instance; do not switch ports for this delivery. Google returns through the registered Apache callback `http://localhost/proyecto-intefacesweb-develop/backend/api/google_callback.php`, then back to port 5174. `PASOS_FRONTEND_URL` can override the configured frontend return on a custom installation.
+Open exactly `http://localhost:5174/`. The command starts Vite and a PHP CLI child serving **only `backend/`** on `127.0.0.1:8000`; `/backend` is proxied without changing item paths or queries. Apache and an htdocs mapping are not prerequisites. Both ports are strict: free an occupied port yourself without stopping unrelated services. Use **Ctrl+C in the terminal running npm** to signal its process group and stop both owned servers; MySQL is never started or stopped by this command.
+
+For automation, run `node /absolute/path/to/frontend/dev.mjs` directly and send SIGINT/SIGTERM to that retained launcher PID. Killing **only the npm wrapper PID** does not guarantee descendant cleanup. POSIX process-group Ctrl+C is tested; native Windows terminal shutdown still needs manual verification.
+
+PHP discovery uses `PHP_BINARY`, then PATH `php`, then `C:\xampp\php\php.exe` on Windows or `/opt/lampp/bin/php` on Linux. An invalid explicit override fails rather than silently falling back. For example, set `PHP_BINARY=/path/to/php npm run dev` in a POSIX shell, or `$env:PHP_BINARY='C:\xampp\php\php.exe'; npm run dev` in PowerShell. Paths may contain spaces.
+
+Before browser consent, the OAuth client owner must manually register **`http://localhost:5174/backend/api/google_callback.php`** on the existing client in Google Cloud Console. Updating local configuration does not register it remotely. See [Google Calendar/Meet setup](docs/google-calendar-meet-setup.md). `PASOS_FRONTEND_URL` can override the frontend return for a custom deployment.
 
 The private ZIP intentionally includes ignored `backend/config/google.local.php`; a Git checkout does not. Keep the ZIP private and outside Git/public web roots. Never serve the backend with a static server. Obtain account credentials separately, and delete sensitive archive copies when no longer needed. Browser OAuth and a real meeting still require manual verification; another installation is not guaranteed without testing.
 
-The current MVP is implemented on the `developer` branch. The strategic proposal remains the scope reference, while runtime verification still requires XAMPP, MySQL, Firebase, and Google OAuth configuration.
+The current MVP is implemented on the `developer` branch. Runtime integration still requires MySQL, Firebase and Google OAuth configuration; local PHP can come from XAMPP without Apache.
 
 ### Frontend component checks
 
@@ -53,7 +59,7 @@ node --experimental-vm-modules tests/frontend-sfc.mjs
 npm --prefix frontend run build
 ```
 
-The offline regression checks SFC compilation, imports, PHP-session roles, navigation, delegated jQuery handlers, late forms, cleanup, failed-login retries, note-only payloads/escaped note text, and the actual Calendar date callback with a constructor/render stub. It does not run a real browser, Firebase, Google OAuth, or the real FullCalendar renderer. The private ZIP is not refreshed by these changes.
+The offline regression checks SFC compilation, imports, PHP-session roles, navigation, delegated jQuery handlers, late forms, cleanup, failed-login retries, note-only payloads/escaped note text, and the actual Calendar date callback with a constructor/render stub. It does not run a real browser, Firebase, Google OAuth, or the real FullCalendar renderer.
 
 ### Firebase identity and password-hash boundary
 
@@ -65,7 +71,7 @@ For an existing MariaDB database, apply `database/password_hash_migration.sql`, 
 
 Each approved CAPTCHA permits one session attempt: PHP consumes approval before parsing JSON or checking Firebase, even on failure. A retry needs a fresh CAPTCHA; unrelated session fields are preserved. Pending UID claims are permitted only for ordinary `user` records. Pending professional/administrator records return setup-required HTTP 403 before password hashing, SQL writes or authentication changes. Already-bound identities continue to log in normally; a different bound UID remains HTTP 409.
 
-**Trusted privileged setup is a prerequisite:** after administrator-controlled account creation, copy its UID from the configured project's Firebase Authentication console. Manually replace the corresponding privileged placeholder in the initial SQL before importing a fresh database; email ownership or `email_verified` alone does not establish a privileged identity. Both privileged seeds are true no-ops on any unique-key collision, never promotions or identity updates. Do not rerun seeds on working data or replace an already-bound professional. See [trusted setup](docs/google-calendar-meet-setup.md#trusted-privileged-account-setup). A source build can proceed, but a refreshed ready-to-login private seed/package remains blocked until the user supplies trusted privileged UIDs. No UID/account setup or live database change was performed here.
+**Trusted privileged setup is a prerequisite:** after administrator-controlled account creation, copy its UID from the configured project's Firebase Authentication console. Manually replace the corresponding privileged placeholder in the initial SQL before importing a fresh database; email ownership or `email_verified` alone does not establish a privileged identity. Both privileged seeds are true no-ops on any unique-key collision, never promotions or identity updates. Do not rerun seeds on working data or replace an already-bound professional. See [trusted setup](docs/google-calendar-meet-setup.md#trusted-privileged-account-setup). The packaged SQL preserves its confirmed professional binding; the administrator remains blocked pending trusted setup. No UID/account setup or live database change was performed by the startup update.
 
 ### Write request boundary
 
@@ -98,6 +104,7 @@ Before deploying this backend against an existing MariaDB schema, apply `databas
 Offline checks, from this repository root:
 
 ```bash
+node tests/portable_dev.test.mjs
 /opt/lampp/bin/php -d zend.assertions=1 -d assert.exception=1 tests/request-guard.php
 /opt/lampp/bin/php -d zend.assertions=1 -d assert.exception=1 tests/consultation-rules.php
 /opt/lampp/bin/php -d zend.assertions=1 -d assert.exception=1 tests/google-calendar-meet.php

@@ -13,7 +13,7 @@ function pasos_google_config(): array
 
     $clientId = getenv('GOOGLE_CLIENT_ID') ?: ($local['client_id'] ?? '');
     $clientSecret = getenv('GOOGLE_CLIENT_SECRET') ?: ($local['client_secret'] ?? '');
-    $redirectUri = getenv('GOOGLE_REDIRECT_URI') ?: ($local['redirect_uri'] ?? 'http://localhost/proyecto-intefacesweb-develop/backend/api/google_callback.php');
+    $redirectUri = getenv('GOOGLE_REDIRECT_URI') ?: ($local['redirect_uri'] ?? 'http://localhost:5174/backend/api/google_callback.php');
 
     return [
         'client_id' => $clientId,

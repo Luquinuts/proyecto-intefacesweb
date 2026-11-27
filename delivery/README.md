@@ -3,7 +3,7 @@
 Download [PASOS-entrega.zip](PASOS-entrega.zip). Both delivery variants have
 exactly three root items: `frontend/`, `backend/`, and `pasos.sql`. Setup guidance
 is inside `frontend/README.md`; tests, historical documents, migrations, build
-output and dependencies are not packaged. Maintained runtime files are unchanged.
+output and dependencies are not packaged. Both archives include the portable launcher.
 
 ## Safe local setup
 
@@ -11,20 +11,29 @@ output and dependencies are not packaged. Maintained runtime files are unchanged
    folder in your personal Downloads. **Never put the private ZIP or `pasos.sql`
    inside `htdocs`, Git, or another public web directory.** Private SQL contains
    Google account authorization, including access/refresh tokens, not just schema.
-2. Start Apache and MySQL. In phpMyAdmin, import root `pasos.sql` directly from
-   that private folder into a fresh demo setup. Never import over a working database.
-3. Create `C:\xampp\htdocs\proyecto-intefacesweb-develop` (Linux XAMPP:
-   `/opt/lampp/htdocs/proyecto-intefacesweb-develop`) and copy **only `backend/`**
-   into its `backend/` subdirectory. The private version includes its private
-   `google.local.php`; the public version requires separately provided OAuth
-   configuration. Do not copy either ZIP, SQL, or `frontend/` into this mapping.
-4. Keep `frontend/` outside `htdocs`. With Node.js 22.12+, run `npm install` and
-   `npm run dev` from its folder; open `http://localhost:5174/`. Apache must keep
-   serving the backend on localhost port 80, separately from Vite.
+2. Keep MySQL running separately. Import root `pasos.sql` directly from that
+   private folder into a fresh demo setup. Never import over a working database.
+3. Install Node.js 22.12+ and PHP CLI with mysqli/cURL. The private version includes
+   `google.local.php`; the public version requires privately supplied OAuth config.
+4. Run `npm install` then `npm run dev` inside `frontend/`. Open exactly
+   `http://localhost:5174/`. Vite proxies `/backend` to owned PHP on `127.0.0.1:8000`,
+   serving only `backend/`. Apache/htdocs mapping is unnecessary. Both ports are
+   strict; **Ctrl+C in the terminal running npm** signals its process group and
+   stops both owned servers without touching MySQL.
 
-The unchanged Vite proxy and OAuth callback require Apache to serve
-`http://localhost/proyecto-intefacesweb-develop/backend/`. A portable PHP launcher
-or callback change is not included; extracting outside that mapping is not enough.
+For automation, start `node /absolute/path/to/frontend/dev.mjs` directly and
+send SIGINT/SIGTERM to the retained launcher PID. Killing only npm's wrapper PID
+does not guarantee descendant cleanup. POSIX process-group Ctrl+C is tested;
+native Windows terminal shutdown remains a manual check.
+
+PHP discovery uses `PHP_BINARY`, PATH `php`, then Windows `C:\xampp\php\php.exe`
+or Linux `/opt/lampp/bin/php`. An invalid explicit override fails. POSIX example:
+`PHP_BINARY='/path with spaces/php' npm run dev`; PowerShell:
+`$env:PHP_BINARY='C:\xampp\php\php.exe'; npm run dev`.
+
+Before real consent, the OAuth client owner must manually register exactly
+`http://localhost:5174/backend/api/google_callback.php` on the existing Cloud
+client. Local configuration changes do not perform or prove that registration.
 
 ## Public and private variants
 
